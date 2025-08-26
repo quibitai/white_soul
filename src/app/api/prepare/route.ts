@@ -74,7 +74,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     // Parse and validate request body
     const body = await req.json();
+    console.log('🔍 Raw request body:', { 
+      processingMode: body.processingMode, 
+      hasText: !!body.text,
+      textLength: body.text?.length 
+    });
+    
     const { text, output, processingMode } = PrepareRequestSchema.parse(body);
+    console.log('🔍 After schema validation:', { processingMode, output });
 
     // Check input length limits
     const maxChars = parseInt(process.env.MAX_INPUT_CHARS || '20000');
