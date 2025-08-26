@@ -73,10 +73,9 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   // const selectedDictionaries = selectDictionaries(pronunciationDictionaries, modelCaps.maxDictionaries);
   // const pronunciationData = toElevenLabsFormat(selectedDictionaries);
 
-  // Use Text-to-Dialogue API for v3 models to support audio tags
+  // Use regular Text-to-Speech API - v3 model supports audio tags with this endpoint
   const isV3Model = modelId === 'eleven_v3' || modelId.startsWith('eleven_v3_preview');
-  const baseEndpoint = isV3Model ? 'text-to-dialogue' : 'text-to-speech';
-  const url = `https://api.elevenlabs.io/v1/${baseEndpoint}/${voiceId}?output_format=${format}`;
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${format}`;
   
   // Merge voice settings with any overrides
   const finalVoiceSettings = {
@@ -105,6 +104,19 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   // Enable SSML parsing for v3 models (required for audio tags) or WebSocket streaming
   if (isV3Model || (enableSSMLParsing && modelCaps.supportsWebSocket)) {
     requestBody.enable_ssml_parsing = true;
+  }
+
+  // Debug logging for v3 models
+  if (isV3Model) {
+    console.log('🎭 ElevenLabs v3 Debug:', {
+      modelId,
+      endpoint: 'text-to-speech',
+      url,
+      textPreview: sanitizedText.substring(0, 200),
+      hasAudioTags: /\[[^\]]+\]/.test(sanitizedText),
+      enableSSMLParsing: requestBody.enable_ssml_parsing,
+      requestBody: { ...requestBody, text: '[TRUNCATED]' }
+    });
   }
 
   try {
