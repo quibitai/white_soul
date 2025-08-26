@@ -34,3 +34,35 @@ export {
   type PronunciationDictionary,
   type PronunciationRule,
 } from './pronunciation';
+
+export {
+  generateSoundEffect,
+  processSoundEffects,
+  extractSoundEffectRequests,
+  mixAudioWithEffects,
+  analyzeSoundEffectOpportunities,
+  validateSoundEffectConfig,
+  type SoundEffectOptions,
+  type SoundEffectResult,
+  type ProcessedSoundEffects,
+  type SoundEffectAnalysis,
+} from './sound-effects';
+
+export {
+  selectOptimalModel,
+  getModelCharacteristics,
+  validateModelFeatures,
+  getModelOptimizedSettings,
+  analyzeAndRecommendModel,
+  type UseCase,
+  type ModelCharacteristics,
+  type ModelRecommendation,
+  ELEVENLABS_MODELS,
+} from './model-selection';
+
+export {
+  createStreamingTTS,
+  splitTextForStreaming,
+  type StreamingOptions,
+  type StreamingResponse,
+} from './websocket';

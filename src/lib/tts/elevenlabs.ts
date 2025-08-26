@@ -17,6 +17,14 @@ export interface TTSOptions {
   nextText?: string;
   pronunciationDictionaries?: string[]; // Dictionary IDs to use
   enableSSMLParsing?: boolean; // For WebSocket streaming
+  speed?: number; // 0.7-1.2 range for speech speed control
+  quality?: string; // "standard" | "enhanced"
+  voiceSettings?: {
+    stability?: number;
+    similarity_boost?: number;
+    style?: number;
+    use_speaker_boost?: boolean;
+  };
 }
 
 export interface TTSResponse {
@@ -39,7 +47,10 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
     previousText, 
     nextText, 
     pronunciationDictionaries = [], // Temporarily unused
-    enableSSMLParsing = false 
+    enableSSMLParsing = false,
+    speed,
+    quality,
+    voiceSettings
   } = options;
 
   if (!text?.trim()) {
@@ -64,13 +75,21 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
 
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${format}`;
   
+  // Merge voice settings with any overrides
+  const finalVoiceSettings = {
+    ...recommendedSettings,
+    ...voiceSettings,
+  };
+
   const requestBody: Record<string, unknown> = {
     text: sanitizedText,
     model_id: modelId,
-    voice_settings: recommendedSettings,
+    voice_settings: finalVoiceSettings,
     ...(seed && { seed }),
     ...(previousText && { previous_text: previousText.slice(-300) }), // Limit context length
     ...(nextText && { next_text: nextText.slice(0, 300) }), // Limit context length
+    ...(speed && { speed }), // Add speed control
+    ...(quality && { quality }), // Add quality parameter
   };
 
   // Add pronunciation dictionaries if supported and available

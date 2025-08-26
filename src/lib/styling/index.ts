@@ -27,3 +27,6 @@ export { applyWST2Rules, validateWST2Rules, analyzeWST2Compliance } from './wst2
 
 // TTS Sanitization
 export { sanitizeForTTS, analyzeTTSArtifacts } from './sanitizer';
+
+// Audio Tags & Emotional Delivery
+export { applyAudioTags, analyzeAudioTagOpportunities, validateAudioTags } from './audio-tags';

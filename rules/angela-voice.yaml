@@ -2,10 +2,12 @@ voice:
   voice_id: "ELEVEN_VOICE_ID"
   model_id: "eleven_multilingual_v2"
   settings:
-    stability: 0.35
-    similarity_boost: 0.80
-    style: 0.20
-    speaker_boost: true
+    stability: 0.5          # Optimized from 0.35 to ElevenLabs recommended 0.5
+    similarity_boost: 0.80  # Keep current - good value
+    style: 0.0             # Reduced from 0.20 for more natural delivery
+    speaker_boost: true     # Keep current - enhances clarity
+    speed: 1.0             # Added speed control (0.7-1.2 range)
+    quality: "enhanced"     # Added quality parameter for better audio
   seed: 123456            # optional determinism
 
 pacing:
@@ -78,6 +80,23 @@ pronunciation:
 websocket:
   enable_ssml_parsing: true # enable SSML parsing for streaming
   avoid_tag_splitting: true # don't split SSML tags across frames
+  
+  # ElevenLabs streaming optimization
+  chunk_length_schedule: [50, 120, 160, 290]  # Character thresholds for audio generation
+  auto_mode: true                              # Automatic generation triggers
+  optimize_streaming_latency: true             # Optimize for lower latency
+
+# Model selection by use case for optimal performance
+model_selection:
+  proof: "eleven_flash_v2_5"      # Low latency for quick previews
+  streaming: "eleven_turbo_v2_5"   # Balanced for real-time
+  full: "eleven_multilingual_v2"   # High quality for final output
+  
+# Sound effects generation settings
+sound_effects:
+  default_duration: 3              # Default duration in seconds
+  prompt_influence: 0.3            # 0.0-1.0, creativity vs literal interpretation
+  max_effects_per_chunk: 1         # Limit sound effects to avoid overwhelming
 
 conversational_realism:
   you_guys_ratio: 0.35      # 35% of "you" should be "you guys"
@@ -86,6 +105,35 @@ conversational_realism:
   all_caps_frequency: 0.15       # 15% of key words should be ALL CAPS
   avoid_repetitive_negation: true # Reduce "it's not X, it's not Y" patterns
   mystical_vocabulary: true      # Ground overly mystical language in accessible terms
+
+audio_tags:
+  enable_emotional_tags: true    # Enable ElevenLabs audio tags for emotional delivery
+  enable_sound_effects: true     # Enable sound effect tags
+  tag_probability: 0.15          # 15% chance to add emotional tags
+  sound_effect_probability: 0.08 # 8% chance to add ambient sound effects
+  max_effects_per_chunk: 1       # Limit sound effects to avoid overwhelming
+  
+  # ElevenLabs v3 compatible audio tags
+  emotional_tags:
+    laughter: ["[laughs]", "[giggles]", "[chuckles]"]
+    whisper: ["[whispers]"]
+    breaths: ["[sighs]", "[exhales]", "[takes a breath]"]
+    emotions: ["[curious]", "[excited]", "[thoughtful]", "[mysterious]"]
+    emphasis: ["[emphasizes]", "[with conviction]"]
+  
+  # Mystical/Tarot-themed sound effects
+  ambient_effects:
+    mystical: ["[soft wind]", "[gentle chimes]", "[rustling cards]"]
+    nature: ["[flowing water]", "[distant thunder]", "[night sounds]"]
+    spiritual: ["[bell rings softly]", "[candle flickers]", "[crystal resonance]"]
+  
+  # Context triggers for automatic tag insertion
+  emotional_triggers:
+    laughter: ["funny", "amusing", "hilarious", "joke", "laugh"]
+    whisper: ["secret", "quietly", "softly", "intimate", "personal"]
+    excitement: ["amazing", "incredible", "wow", "fantastic", "powerful"]
+    curiosity: ["wonder", "interesting", "curious", "explore", "discover"]
+    mystery: ["hidden", "mysterious", "unknown", "reveal", "unveil"]
 
 speech_patterns:
   hesitation_cues:

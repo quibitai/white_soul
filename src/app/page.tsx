@@ -34,6 +34,7 @@ interface ProcessingState {
     withMacros: string;
     conversational: string;
     wst2Formatted: string;
+    withAudioTags: string; // NEW: Audio tags processing step
     sanitized: string;
     finalOutput: string;
     pipeline: Array<{
@@ -448,6 +449,13 @@ export default function Home() {
                       <h5 className="font-bold text-purple-800 mb-2">🎭 AFTER WST2 RULES</h5>
                       <pre className="text-sm text-purple-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
                         {state.processing.wst2Formatted}
+                      </pre>
+                    </div>
+
+                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                      <h5 className="font-bold text-amber-800 mb-2">🎵 AFTER AUDIO TAGS</h5>
+                      <pre className="text-sm text-amber-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
+                        {state.processing.withAudioTags}
                       </pre>
                     </div>
 

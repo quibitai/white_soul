@@ -16,6 +16,8 @@ import {
   synthesizeChunks,
   concatAudioBuffers,
   validateElevenLabsConfig,
+  selectOptimalModel,
+  getModelOptimizedSettings,
 } from '@/lib/tts';
 import { loadConfig } from '@/lib/styling';
 
@@ -87,12 +89,28 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Synthesize all chunks
+    // Select optimal model for full synthesis (high quality)
+    const finalVoiceId = voiceId || process.env.ELEVEN_VOICE_ID || config.voice.voice_id;
+    const baseModelId = modelId || process.env.ELEVEN_MODEL_ID || config.voice.model_id;
+    const optimalModelId = selectOptimalModel('full', config, ['ssml', 'voice_settings']);
+    const finalModelId = modelId ? baseModelId : optimalModelId; // Use provided model or optimal selection
+
+    // Get model-optimized voice settings
+    const optimizedSettings = getModelOptimizedSettings(finalModelId, 'full');
+    const finalVoiceSettings = {
+      ...optimizedSettings,
+      ...config.voice.settings, // Override with config settings
+    };
+
+    // Synthesize all chunks with enhanced settings
     const audioBuffers = await synthesizeChunks(textChunks, config, {
-      voiceId: voiceId || process.env.ELEVEN_VOICE_ID || config.voice.voice_id,
-      modelId: modelId || process.env.ELEVEN_MODEL_ID || config.voice.model_id,
+      voiceId: finalVoiceId,
+      modelId: finalModelId,
       format,
       seed: config.voice.seed,
+      speed: config.voice.settings.speed,
+      quality: config.voice.settings.quality,
+      voiceSettings: finalVoiceSettings,
     });
 
     // Concatenate audio buffers

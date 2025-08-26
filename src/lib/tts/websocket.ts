@@ -17,6 +17,16 @@ export interface StreamingOptions {
   onAudioChunk?: (chunk: ArrayBuffer) => void;
   onComplete?: () => void;
   onError?: (error: Error) => void;
+  // New streaming optimization options
+  chunkLengthSchedule?: number[];
+  autoMode?: boolean;
+  optimizeStreamingLatency?: boolean;
+  voiceSettings?: {
+    stability?: number;
+    similarity_boost?: number;
+    style?: number;
+    use_speaker_boost?: boolean;
+  };
 }
 
 export interface StreamingResponse {
@@ -96,6 +106,10 @@ export async function createStreamingTTS(options: StreamingOptions): Promise<Str
     onAudioChunk,
     onComplete,
     onError,
+    chunkLengthSchedule = [50, 120, 160, 290],
+    autoMode = true,
+    optimizeStreamingLatency = true,
+    voiceSettings,
   } = options;
 
   if (!process.env.ELEVENLABS_API_KEY) {
@@ -127,16 +141,23 @@ export async function createStreamingTTS(options: StreamingOptions): Promise<Str
       isConnected = true;
 
       // Send initial configuration
+      const defaultVoiceSettings = {
+        stability: 0.5,
+        similarity_boost: 0.8,
+        style: 0.0,
+        use_speaker_boost: true,
+      };
+
       const config: Record<string, unknown> = {
         text: ' ', // Start with empty space
         voice_settings: {
-          stability: 0.35,
-          similarity_boost: 0.8,
-          style: 0.2,
-          speaker_boost: true,
+          ...defaultVoiceSettings,
+          ...voiceSettings,
         },
         generation_config: {
-          chunk_length_schedule: [120, 160, 250, 290],
+          chunk_length_schedule: chunkLengthSchedule,
+          auto_mode: autoMode,
+          optimize_streaming_latency: optimizeStreamingLatency,
         },
         ...(seed && { seed }),
         ...(previousText && { previous_text: previousText.slice(-300) }),
