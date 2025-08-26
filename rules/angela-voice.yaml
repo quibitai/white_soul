@@ -109,8 +109,8 @@ conversational_realism:
 audio_tags:
   enable_emotional_tags: true    # Enable ElevenLabs audio tags for emotional delivery
   enable_sound_effects: true     # Enable sound effect tags
-  tag_probability: 0.15          # 15% chance to add emotional tags
-  sound_effect_probability: 0.08 # 8% chance to add ambient sound effects
+  tag_probability: 0.8           # 80% chance to add emotional tags (increased for testing)
+  sound_effect_probability: 0.5  # 50% chance to add ambient sound effects (increased for testing)
   max_effects_per_chunk: 1       # Limit sound effects to avoid overwhelming
   
   # ElevenLabs v3 compatible audio tags
@@ -130,10 +130,10 @@ audio_tags:
   # Context triggers for automatic tag insertion
   emotional_triggers:
     laughter: ["funny", "amusing", "hilarious", "joke", "laugh"]
-    whisper: ["secret", "quietly", "softly", "intimate", "personal"]
-    excitement: ["amazing", "incredible", "wow", "fantastic", "powerful"]
-    curiosity: ["wonder", "interesting", "curious", "explore", "discover"]
-    mystery: ["hidden", "mysterious", "unknown", "reveal", "unveil"]
+    whisper: ["secret", "quietly", "softly", "intimate", "personal", "hermit", "isolation", "solitude"]
+    excitement: ["amazing", "incredible", "wow", "fantastic", "powerful", "energy", "transformation"]
+    curiosity: ["wonder", "interesting", "curious", "explore", "discover", "card", "reading", "insight"]
+    mystery: ["hidden", "mysterious", "unknown", "reveal", "unveil", "tarot", "cards", "divine", "spiritual"]
 
 speech_patterns:
   hesitation_cues:

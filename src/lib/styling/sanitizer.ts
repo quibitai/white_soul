@@ -57,7 +57,26 @@ function removeMetadataArtifacts(text: string): string {
   
   // Remove JSON-like artifacts
   cleaned = cleaned.replace(/\{[^}]*\}/g, '');
+  
+  // Remove square brackets EXCEPT for audio tags (ElevenLabs audio tags)
+  // Preserve audio tags like [laughs], [whispers], [soft wind], etc.
+  const audioTagPattern = /\[(laughs|giggles|chuckles|whispers|sighs|exhales|takes a breath|curious|excited|thoughtful|mysterious|emphasizes|with conviction|soft wind|gentle chimes|rustling cards|flowing water|distant thunder|night sounds|bell rings softly|candle flickers|crystal resonance)\]/gi;
+  const audioTags: string[] = [];
+  
+  // Extract and temporarily store audio tags
+  cleaned = cleaned.replace(audioTagPattern, (match) => {
+    const placeholder = `__AUDIO_TAG_${audioTags.length}__`;
+    audioTags.push(match);
+    return placeholder;
+  });
+  
+  // Remove other square bracket content (JSON artifacts, etc.)
   cleaned = cleaned.replace(/\[[^\]]*\]/g, '');
+  
+  // Restore audio tags
+  audioTags.forEach((tag, index) => {
+    cleaned = cleaned.replace(`__AUDIO_TAG_${index}__`, tag);
+  });
 
   return cleaned;
 }
