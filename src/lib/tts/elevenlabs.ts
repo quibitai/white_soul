@@ -88,11 +88,19 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
     model_id: modelId,
     voice_settings: finalVoiceSettings,
     ...(seed && { seed }),
-    ...(previousText && { previous_text: previousText.slice(-300) }), // Limit context length
-    ...(nextText && { next_text: nextText.slice(0, 300) }), // Limit context length
     ...(speed && { speed }), // Add speed control
     ...(quality && { quality }), // Add quality parameter
   };
+
+  // Add context parameters only for non-v3 models (v3 doesn't support them yet)
+  if (!isV3Model) {
+    if (previousText) {
+      requestBody.previous_text = previousText.slice(-300); // Limit context length
+    }
+    if (nextText) {
+      requestBody.next_text = nextText.slice(0, 300); // Limit context length
+    }
+  }
 
   // Add pronunciation dictionaries if supported and available
   // Note: Pronunciation dictionaries must be pre-created in ElevenLabs dashboard
@@ -115,6 +123,7 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
       textPreview: sanitizedText.substring(0, 200),
       hasAudioTags: /\[[^\]]+\]/.test(sanitizedText),
       enableSSMLParsing: requestBody.enable_ssml_parsing,
+      contextSkipped: 'previous_text/next_text not supported in v3',
       requestBody: { ...requestBody, text: '[TRUNCATED]' }
     });
   }
