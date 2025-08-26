@@ -12,11 +12,7 @@ import { VoiceConfig } from './config';
  * @returns {string} Text with audio tags inserted
  */
 export function applyAudioTags(text: string, config: VoiceConfig): string {
-  console.log('🎵 Audio tags: Starting with text:', text.substring(0, 100));
-  console.log('🎵 Audio tags config:', config.audio_tags);
-  
   if (!config.audio_tags?.enable_emotional_tags && !config.audio_tags?.enable_sound_effects) {
-    console.log('🎵 Audio tags: Both features disabled, returning original text');
     return text;
   }
 
@@ -24,16 +20,12 @@ export function applyAudioTags(text: string, config: VoiceConfig): string {
 
   // Apply emotional tags based on context
   if (config.audio_tags?.enable_emotional_tags) {
-    console.log('🎵 Applying emotional tags...');
     processed = applyEmotionalTags(processed, config);
-    console.log('🎵 After emotional tags:', processed.substring(0, 200));
   }
 
   // Apply ambient sound effects
   if (config.audio_tags?.enable_sound_effects) {
-    console.log('🎵 Applying ambient effects...');
     processed = applyAmbientEffects(processed, config);
-    console.log('🎵 After ambient effects:', processed.substring(0, 200));
   }
 
   return processed;
@@ -46,19 +38,12 @@ function applyEmotionalTags(text: string, config: VoiceConfig): string {
   if (!config.audio_tags) return text;
 
   const { emotional_triggers, emotional_tags, tag_probability } = config.audio_tags;
-  console.log('🎵 Emotional tags - probability:', tag_probability);
-  console.log('🎵 Emotional triggers:', emotional_triggers);
 
   // Process each sentence for emotional context
   const sentences = text.split(/(?<=[.!?])\s+/);
-  console.log('🎵 Split into sentences:', sentences.length);
   
-  const processedSentences = sentences.map((sentence, index) => {
-    const randomValue = Math.random();
-    console.log(`🎵 Sentence ${index}: random=${randomValue.toFixed(2)}, threshold=${tag_probability}`);
-    
-    if (randomValue > tag_probability) {
-      console.log(`🎵 Sentence ${index}: Skipped (random > threshold)`);
+  const processedSentences = sentences.map(sentence => {
+    if (Math.random() > tag_probability) {
       return sentence;
     }
 
@@ -67,13 +52,11 @@ function applyEmotionalTags(text: string, config: VoiceConfig): string {
       for (const trigger of triggers) {
         const pattern = new RegExp(`\\b${trigger}\\b`, 'gi');
         if (pattern.test(sentence)) {
-          console.log(`🎵 Found trigger "${trigger}" for emotion "${emotion}" in sentence:`, sentence);
           return insertEmotionalTag(sentence, emotion, emotional_tags);
         }
       }
     }
 
-    console.log(`🎵 Sentence ${index}: No triggers found`);
     return sentence;
   });
 

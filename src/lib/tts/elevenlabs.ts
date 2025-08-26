@@ -73,7 +73,10 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   // const selectedDictionaries = selectDictionaries(pronunciationDictionaries, modelCaps.maxDictionaries);
   // const pronunciationData = toElevenLabsFormat(selectedDictionaries);
 
-  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${format}`;
+  // Use Text-to-Dialogue API for v3 models to support audio tags
+  const isV3Model = modelId === 'eleven_v3' || modelId.startsWith('eleven_v3_preview');
+  const baseEndpoint = isV3Model ? 'text-to-dialogue' : 'text-to-speech';
+  const url = `https://api.elevenlabs.io/v1/${baseEndpoint}/${voiceId}?output_format=${format}`;
   
   // Merge voice settings with any overrides
   const finalVoiceSettings = {
@@ -99,13 +102,8 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   //   requestBody.pronunciation_dictionary_locators = pronunciationData;
   // }
 
-  // Add SSML parsing flag for WebSocket streaming or v3 model
-  if (enableSSMLParsing && modelCaps.supportsWebSocket) {
-    requestBody.enable_ssml_parsing = true;
-  }
-  
-  // Enable SSML parsing for v3 model to support audio tags
-  if (modelId === 'eleven_v3') {
+  // Enable SSML parsing for v3 models (required for audio tags) or WebSocket streaming
+  if (isV3Model || (enableSSMLParsing && modelCaps.supportsWebSocket)) {
     requestBody.enable_ssml_parsing = true;
   }
 
