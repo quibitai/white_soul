@@ -109,8 +109,8 @@ conversational_realism:
 audio_tags:
   enable_emotional_tags: true    # Enable ElevenLabs audio tags for emotional delivery
   enable_sound_effects: true     # Enable sound effect tags
-  tag_probability: 0.6           # 60% chance to add emotional tags (for testing v3)
-  sound_effect_probability: 0.3  # 30% chance to add ambient sound effects (for testing v3)
+  tag_probability: 0.9           # 90% chance to add emotional tags (debugging)
+  sound_effect_probability: 0.7  # 70% chance to add ambient sound effects (debugging)
   max_effects_per_chunk: 1       # Limit sound effects to avoid overwhelming
   
   # ElevenLabs v3 compatible audio tags

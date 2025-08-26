@@ -6,7 +6,7 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Upload, Play, Download, AlertCircle, CheckCircle, Loader2, Code } from 'lucide-react';
 
 interface LintReport {
@@ -51,6 +51,13 @@ export default function Home() {
   const [showProcessing, setShowProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+
+  // Set audio source when URL is available
+  useEffect(() => {
+    if (audioRef.current && state.audioUrl) {
+      audioRef.current.src = state.audioUrl;
+    }
+  }, [state.audioUrl]);
 
   /**
    * Handles file upload for text input
@@ -222,13 +229,6 @@ export default function Home() {
   /**
    * Plays the generated audio
    */
-  const playAudio = () => {
-    if (audioRef.current && state.audioUrl) {
-      audioRef.current.src = state.audioUrl;
-      audioRef.current.play();
-    }
-  };
-
   const isProcessing = ['preparing', 'proofing', 'synthesizing'].includes(state.status);
   const hasAudio = state.status === 'ready' && state.audioUrl;
   const hasReport = state.report && (state.report.warnings.length > 0 || state.report.bans.length > 0);
@@ -508,15 +508,29 @@ export default function Home() {
               </div>
               
               <div className="flex items-center justify-center gap-6">
-                <button
-                  onClick={playAudio}
-                  className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-                >
-                  <Play size={20} />
-                  PLAY TRANSMISSION
-                </button>
-                
-                <audio ref={audioRef} controls className="hidden" />
+                {/* Full Audio Player */}
+                <div className="w-full max-w-2xl mx-auto">
+                  <div className="p-6 bg-gradient-to-br from-emerald-50 to-green-50 border-2 border-emerald-200 rounded-2xl shadow-lg">
+                    <h3 className="text-xl font-bold text-emerald-800 mb-4 text-center">🎵 Angela&apos;s Voice Transmission</h3>
+                    
+                    <audio 
+                      ref={audioRef} 
+                      controls 
+                      className="w-full h-12 rounded-lg shadow-md"
+                      style={{
+                        filter: 'sepia(20%) saturate(70%) hue-rotate(88deg) brightness(1.15) contrast(1.05)',
+                      }}
+                    >
+                      <source src={state.downloadUrl} type="audio/mpeg" />
+                      Your browser does not support the audio element.
+                    </audio>
+                    
+                    <div className="mt-4 flex items-center justify-between text-sm text-emerald-700">
+                      <span>🎭 ElevenLabs v3 • Emotional Audio Tags</span>
+                      <span>✨ White Soul Tarot</span>
+                    </div>
+                  </div>
+                </div>
                 
                 {state.downloadUrl && (
                   <a

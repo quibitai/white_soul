@@ -50,6 +50,14 @@ export const ELEVENLABS_MODELS: Record<string, ModelCharacteristics> = {
     maxContextLength: 2200,
     supportedFeatures: ['ssml', 'websocket', 'streaming', 'voice_settings'],
   },
+  'eleven_v3': {
+    quality: 'high',
+    latency: 'high',
+    multilingual: true,
+    realtime: false,
+    maxContextLength: 3000,
+    supportedFeatures: ['audio_tags', 'emotional_delivery', 'advanced_ssml', 'voice_settings'],
+  },
   'eleven_english_v1': {
     quality: 'standard',
     latency: 'medium',
