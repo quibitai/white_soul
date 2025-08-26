@@ -21,3 +21,6 @@ export {
 
 // Conversational realism
 export { applyConversationalRealism, analyzeConversationalRealism } from './conversational';
+
+// WST2 Studio Speech Rules
+export { applyWST2Rules, validateWST2Rules, analyzeWST2Compliance } from './wst2-rules';

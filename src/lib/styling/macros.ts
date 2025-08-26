@@ -42,14 +42,14 @@ export function applyMacros(text: string, config: VoiceConfig): string {
 function applyPauseMacros(text: string, config: VoiceConfig): string {
   let processed = text;
 
-  // Map punctuation to pause types
+  // Map punctuation to pause types (WST2 Studio Speech Rules)
   const pauseMap = {
-    ',': `<pause:${config.pacing.pauses.micro}>`, // Micro pause for commas
-    ';': `<pause:${config.pacing.pauses.short}>`, // Short pause for semicolons
-    ':': `<pause:${config.pacing.pauses.short}>`, // Short pause for colons
-    '.': `<pause:${config.pacing.pauses.med}>`,   // Medium pause for periods
-    '!': `<pause:${config.pacing.pauses.med}>`,   // Medium pause for exclamations
-    '?': `<pause:${config.pacing.pauses.med}>`,   // Medium pause for questions
+    ',': `<pause:${config.pacing.pauses.micro}>`, // WST2: very slight hesitation
+    ';': `<pause:${config.pacing.pauses.beat}>`,  // WST2: micro-beat for rhythmic control
+    ':': `<pause:${config.pacing.pauses.beat}>`,  // WST2: micro-beat for rhythmic control
+    '.': `<pause:${config.pacing.pauses.minor}>`, // WST2: minor beat after statements
+    '!': `<pause:${config.pacing.pauses.shift}>`, // WST2: emotional shift for exclamations
+    '?': `<pause:${config.pacing.pauses.minor}>`, // WST2: minor beat after questions
   };
 
   // Apply basic punctuation pauses
@@ -61,19 +61,19 @@ function applyPauseMacros(text: string, config: VoiceConfig): string {
   // Handle ellipsis with longer pause
   processed = processed.replace(
     /\.\.\.(\s+)/g, 
-    `<pause:${config.pacing.pauses.long}>$1`
+    `<pause:${config.pacing.pauses.shift}>$1` // WST2: emotional shift
   );
 
   // Handle em-dash with medium pause
   processed = processed.replace(
     /\s*--\s*/g, 
-    ` <pause:${config.pacing.pauses.med}> `
+    ` <pause:${config.pacing.pauses.minor}> ` // WST2: minor beat for em-dash
   );
 
   // Add longer pauses after paragraph breaks
   processed = processed.replace(
     /\n\n+/g, 
-    `\n<pause:${config.pacing.pauses.break}>\n`
+    `\n<pause:${config.pacing.pauses.major}>\n` // WST2: major mood shift for paragraph breaks
   );
 
   // Handle reflective/contemplative phrases with slight rate adjustment

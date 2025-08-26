@@ -12,6 +12,7 @@ import {
   lint,
   applyMacros,
   applyConversationalRealism,
+  applyWST2Rules,
   toSSML,
   chunk,
   type TextChunk,
@@ -70,7 +71,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const report = lint(normalized, config);
     const withMacros = applyMacros(normalized, config);
     const conversational = applyConversationalRealism(withMacros, config);
-    const chunks = chunk(conversational, config);
+    const wst2Formatted = applyWST2Rules(conversational, config);
+    const chunks = chunk(wst2Formatted, config);
 
     // Convert to SSML or keep as text based on output preference
     const processedChunks: TextChunk[] = chunks.map((chunk) => ({

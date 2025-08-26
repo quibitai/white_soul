@@ -159,7 +159,7 @@ function finalizeChunk(chunk: string, config: VoiceConfig): string {
 
   // Add short pause at end if configured
   if (config.chunking.guardrails.end_with_short_pause) {
-    const shortPause = `<pause:${config.pacing.pauses.short}>`;
+    const shortPause = `<pause:${config.pacing.pauses.beat}>`; // WST2: micro-beat for rhythmic control
     if (!finalized.endsWith('>')) {
       finalized = finalized + ' ' + shortPause;
     }

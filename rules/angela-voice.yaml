@@ -11,11 +11,13 @@ voice:
 pacing:
   wpm: 145
   pauses:
-    micro: 120            # ms
-    short: 250
-    med:   400
-    long:  900
-    break: 2000           # cap long silences ~2.2s
+    # WST2 Studio Speech Rules - Break Tag System
+    micro: 300            # 0.3s - very slight hesitation or hard emphasis cutoff
+    beat: 500             # 0.5s - micro-beat for rhythmic control or emphasis
+    minor: 1000           # 1.0s - minor beat; after punchlines, pivots, or slight reflection
+    shift: 1500           # 1.5s - emotional shift, impact line landing, paragraph break
+    impact: 2000          # 2.0s - emotional shift, impact line landing, paragraph break
+    major: 3000           # 3.0s - major mood shift, breath reset, scene change, or emotional floor drop
   reflective_rate_delta_pct: -2
 
 tone:
@@ -54,9 +56,17 @@ chunking:
     end_with_short_pause: true
 
 punctuation:
-  avoid_trailing_em_dash: true
+  # WST2 Studio Speech Rules - Punctuation + Space Logic
+  avoid_trailing_em_dash: false  # Em-dashes allowed for sudden shifts, interrupted thoughts
   avoid_ellipsis_line_start: true
   drop_final_period_when_pause_follows: true  # to avoid end-of-line lift
+  
+  # WST2 Specific Rules
+  ellipses_with_breaks: true      # Ellipses nearly always paired with <break time="1s" /> or longer
+  em_dash_for_shifts: true        # Em-dashes for sudden shifts, interrupted thoughts, rhetorical emphasis
+  no_space_before_punctuation: true  # No extra space before punctuation
+  break_after_punctuation: true   # <break> tags go directly after punctuation
+  one_space_before_inline_break: true  # One space before <break> tag when used inline
 
 pronunciation:
   max_dictionaries: 3       # maximum pronunciation dictionaries to attach
@@ -86,6 +96,14 @@ speech_patterns:
     - "I mean"
   
   emphasis_words:
+    # WST2 Studio Speech Rules - ALL CAPS Emphasis
+    # Used sparingly on emotionally loaded or rhythmically sharp words
+    # For: internal voice surges, sarcastic emphasis, exasperation, spiraling, reactivity
+    - "much"
+    - "fully" 
+    - "disappear"
+    - "yikes"
+    - "everything"
     - "power"
     - "energy"
     - "truth"
@@ -96,6 +114,11 @@ speech_patterns:
     - "see"
     - "know"
     - "trust"
+    - "really"
+    - "totally"
+    - "literally"
+    - "actually"
+    - "exactly"
   
   mystical_replacements:
     "connection": "currents"
