@@ -12,7 +12,15 @@ import { VoiceConfig } from './config';
  * @returns {string} Text with audio tags inserted
  */
 export function applyAudioTags(text: string, config: VoiceConfig): string {
+  console.log('🎭 Audio Tags - Starting processing:', {
+    hasConfig: !!config.audio_tags,
+    emotionalEnabled: config.audio_tags?.enable_emotional_tags,
+    soundEffectsEnabled: config.audio_tags?.enable_sound_effects,
+    textPreview: text.substring(0, 100) + '...'
+  });
+
   if (!config.audio_tags?.enable_emotional_tags && !config.audio_tags?.enable_sound_effects) {
+    console.log('🎭 Audio Tags - Disabled, returning original text');
     return text;
   }
 
@@ -20,13 +28,22 @@ export function applyAudioTags(text: string, config: VoiceConfig): string {
 
   // Apply emotional tags based on context
   if (config.audio_tags?.enable_emotional_tags) {
+    console.log('🎭 Audio Tags - Applying emotional tags');
     processed = applyEmotionalTags(processed, config);
   }
 
   // Apply ambient sound effects
   if (config.audio_tags?.enable_sound_effects) {
+    console.log('🎭 Audio Tags - Applying sound effects');
     processed = applyAmbientEffects(processed, config);
   }
+
+  console.log('🎭 Audio Tags - Final result:', {
+    originalLength: text.length,
+    processedLength: processed.length,
+    hasChanges: text !== processed,
+    preview: processed.substring(0, 100) + '...'
+  });
 
   return processed;
 }
@@ -38,24 +55,43 @@ function applyEmotionalTags(text: string, config: VoiceConfig): string {
   if (!config.audio_tags) return text;
 
   const { emotional_triggers, emotional_tags, tag_probability } = config.audio_tags;
+  
+  console.log('🎭 Emotional Tags - Configuration:', {
+    hasTriggers: !!emotional_triggers,
+    hasTags: !!emotional_tags,
+    tagProbability: tag_probability,
+    triggerKeys: emotional_triggers ? Object.keys(emotional_triggers) : []
+  });
 
   // Process each sentence for emotional context
   const sentences = text.split(/(?<=[.!?])\s+/);
+  console.log('🎭 Emotional Tags - Processing sentences:', sentences.length);
   
-  const processedSentences = sentences.map(sentence => {
-    if (Math.random() > tag_probability) {
+  const processedSentences = sentences.map((sentence, index) => {
+    const randomValue = Math.random();
+    console.log(`🎭 Sentence ${index + 1}: probability check ${randomValue} vs ${tag_probability}`);
+    
+    if (randomValue > tag_probability) {
+      console.log(`🎭 Sentence ${index + 1}: skipped due to probability`);
       return sentence;
     }
 
     // Check for emotional triggers
+    console.log(`🎭 Sentence ${index + 1}: "${sentence.substring(0, 50)}..."`);
+    
     for (const [emotion, triggers] of Object.entries(emotional_triggers)) {
       for (const trigger of triggers) {
         const pattern = new RegExp(`\\b${trigger}\\b`, 'gi');
         if (pattern.test(sentence)) {
-          return insertEmotionalTag(sentence, emotion, emotional_tags);
+          console.log(`🎭 MATCH FOUND! Emotion: ${emotion}, Trigger: "${trigger}"`);
+          const tagged = insertEmotionalTag(sentence, emotion, emotional_tags);
+          console.log(`🎭 Tagged sentence: "${tagged.substring(0, 100)}..."`);
+          return tagged;
         }
       }
     }
+    
+    console.log(`🎭 Sentence ${index + 1}: No triggers matched`);
 
     return sentence;
   });
