@@ -115,9 +115,11 @@ export default function Home() {
       const data = await response.json();
       console.log('✅ Text preparation complete:', {
         manifestId: data.manifestId,
-        processingMode: data.processing?.mode,
-        hasAudioTags: data.processing?.finalText?.includes('[') || false,
-        finalTextPreview: data.processing?.finalText?.substring(0, 150) + '...'
+        processingMode: processingMode, // Use the mode we sent
+        hasAudioTags: (data.processing?.finalOutput || data.processing?.finalText || '').includes('['),
+        finalTextPreview: (data.processing?.finalOutput || data.processing?.finalText || 'No processed text found').substring(0, 150) + '...',
+        audioTags: data.processing?.audioTags || [],
+        fullProcessing: data.processing // Debug: see full structure
       });
       
       return { 

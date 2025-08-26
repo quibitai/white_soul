@@ -89,9 +89,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const config = await loadConfig();
 
     // Choose processing approach based on mode
+    console.log('🔄 Processing mode decision:', { processingMode, text: text.substring(0, 50) + '...' });
+    
     if (processingMode === 'natural') {
+      console.log('🌿 Using Natural Processing Mode');
       return await processNaturalMode(text, config, output);
     }
+    
+    console.log('⚙️ Using Traditional Processing Mode');
 
     // Traditional processing pipeline
     const normalized = normalize(text, config);
@@ -249,11 +254,18 @@ export async function GET(): Promise<NextResponse> {
  */
 async function processNaturalMode(text: string, config: VoiceConfig, _output: string) {
   try {
+    console.log('🌿 Natural Mode - Step 1: Converting pauses to natural punctuation');
+    console.log('📝 Original text:', text.substring(0, 100) + '...');
+    
     // Step 1: Convert any existing pause markup to natural punctuation
     const naturalText = convertPausesToNatural(text);
+    console.log('🔄 After pause conversion:', naturalText.substring(0, 100) + '...');
     
     // Step 2: Process for natural TTS with audio tags
+    console.log('🌿 Natural Mode - Step 2: Applying audio tags');
     const naturalResult = processForNaturalTTS(naturalText, config);
+    console.log('🎭 After audio tags:', naturalResult.text.substring(0, 100) + '...');
+    console.log('🏷️ Audio tags found:', naturalResult.audioTags);
     
     // Step 3: Validate the result
     const validation = validateNaturalText(naturalResult.text);
