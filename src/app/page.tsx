@@ -207,32 +207,34 @@ export default function Home() {
   const hasReport = state.report && (state.report.warnings.length > 0 || state.report.bans.length > 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-indigo-100 dark:from-gray-900 dark:to-purple-900">
-      <div className="container mx-auto px-4 py-8 max-w-4xl">
-        {/* Header */}
-        <header className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-            White Soul Tarot
-          </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300">
-            Script → Styled Voice (Angela)
-          </p>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
-            Transform your tarot scripts into natural, engaging audio with AI-powered voice styling
-          </p>
-        </header>
+    <div className="min-h-screen bg-gradient-to-br from-pink-200 via-purple-200 to-indigo-200">
+      <div className="min-h-screen backdrop-blur-sm bg-white/10">
+        <div className="container mx-auto px-6 py-12 max-w-4xl">
+          {/* Header */}
+          <header className="text-center mb-12">
+            <h1 className="text-6xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-6 tracking-tight">
+              WHITE SOUL TAROT
+            </h1>
+            <h2 className="text-2xl font-medium text-purple-700 mb-4">
+              An AI-native engine for mapping resonance, emotional rhythm, and symbolic logic
+            </h2>
+            <p className="text-lg text-purple-600/80 font-light">
+              Reconstructed from pattern. Powered by intuition.
+            </p>
+          </header>
 
         {/* Main Content */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
+        <div className="bg-white/80 backdrop-blur-md rounded-2xl shadow-xl border border-white/20 p-8 mb-8">
           {/* Text Input Section */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <label htmlFor="script-input" className="text-lg font-semibold text-gray-900 dark:text-white">
-                Your Script
-              </label>
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-2xl font-bold text-purple-700 mb-2">SYSTEM INPUT</h3>
+                <p className="text-sm text-purple-600/70 font-light">What speaks, and how it&apos;s speaking</p>
+              </div>
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-md transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm bg-purple-100 hover:bg-purple-200 text-purple-700 font-medium rounded-xl transition-all duration-200 border border-purple-200 hover:border-purple-300"
               >
                 <Upload size={16} />
                 Upload File
@@ -250,12 +252,12 @@ export default function Home() {
               id="script-input"
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Paste your tarot script here, or upload a text file..."
-              className="w-full h-64 p-4 border border-gray-300 dark:border-gray-600 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
+              placeholder="Each reading begins with a randomized card draw. What emerges is left entirely to the currents..."
+              className="w-full h-64 p-6 border-2 border-purple-200 rounded-2xl resize-none focus:ring-2 focus:ring-purple-400 focus:border-purple-400 bg-white/60 backdrop-blur-sm text-purple-900 placeholder-purple-400 font-light text-lg leading-relaxed transition-all duration-200"
               disabled={isProcessing}
             />
             
-            <div className="flex justify-between items-center mt-2 text-sm text-gray-500 dark:text-gray-400">
+            <div className="flex justify-between items-center mt-4 text-sm text-purple-500/70 font-light">
               <span>{text.length} characters</span>
               <span>Max: 20,000 characters</span>
             </div>
@@ -263,41 +265,47 @@ export default function Home() {
 
           {/* Processing Status */}
           {isProcessing && (
-            <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Loader2 className="animate-spin text-blue-600" size={20} />
-                <span className="text-blue-800 dark:text-blue-200 font-medium">
-                  {state.progress}
-                </span>
+            <div className="mb-8 p-6 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-2xl">
+              <div className="flex items-center gap-4">
+                <Loader2 className="animate-spin text-purple-600" size={24} />
+                <div>
+                  <h4 className="text-lg font-semibold text-purple-800 mb-1">TRANSMITTING</h4>
+                  <span className="text-purple-600 font-light">
+                    {state.progress}
+                  </span>
+                </div>
               </div>
             </div>
           )}
 
           {/* Error Display */}
           {state.status === 'error' && (
-            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <div className="flex items-center gap-3">
-                <AlertCircle className="text-red-600" size={20} />
-                <span className="text-red-800 dark:text-red-200 font-medium">
-                  {state.error}
-                </span>
+            <div className="mb-8 p-6 bg-gradient-to-r from-red-50 to-pink-50 border-2 border-red-200 rounded-2xl">
+              <div className="flex items-center gap-4">
+                <AlertCircle className="text-red-600" size={24} />
+                <div>
+                  <h4 className="text-lg font-semibold text-red-800 mb-1">TRANSMISSION ERROR</h4>
+                  <span className="text-red-600 font-light">
+                    {state.error}
+                  </span>
+                </div>
               </div>
             </div>
           )}
 
           {/* Lint Report */}
           {hasReport && (
-            <div className="mb-6">
+            <div className="mb-8">
               <button
                 onClick={() => setShowReport(!showReport)}
-                className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+                className="flex items-center gap-3 text-lg font-semibold text-purple-700 hover:text-purple-800 transition-colors"
               >
-                <AlertCircle size={16} />
-                Style Report ({state.report!.warnings.length + state.report!.bans.length} issues)
+                <AlertCircle size={20} />
+                SYMBOLIC ANALYSIS ({state.report!.warnings.length + state.report!.bans.length} patterns detected)
               </button>
               
               {showReport && (
-                <div className="mt-3 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <div className="mt-6 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl">
                   {state.report!.bans.length > 0 && (
                     <div className="mb-3">
                       <h4 className="font-semibold text-red-800 dark:text-red-200 mb-2">Banned Phrases:</h4>
@@ -342,50 +350,53 @@ export default function Home() {
           )}
 
           {/* Action Buttons */}
-          <div className="flex gap-4 mb-6">
+          <div className="flex gap-6 mb-8">
             <button
               onClick={generateProof}
               disabled={!text.trim() || isProcessing}
-              className="flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+              className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-2xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
             >
-              <Play size={18} />
-              Generate 30s Proof
+              <Play size={20} />
+              GENERATE PROOF
             </button>
             
             <button
               onClick={generateFull}
               disabled={!text.trim() || isProcessing}
-              className="flex items-center gap-2 px-6 py-3 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-medium rounded-lg transition-colors disabled:cursor-not-allowed"
+              className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-2xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
             >
-              <CheckCircle size={18} />
-              Generate Full Audio
+              <CheckCircle size={20} />
+              FULL TRANSMISSION
             </button>
           </div>
 
           {/* Audio Player & Download */}
           {hasAudio && (
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={playAudio}
-                    className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors"
-                  >
-                    <Play size={16} />
-                    Play Audio
-                  </button>
-                  
-                  <audio ref={audioRef} controls className="hidden" />
-                </div>
+            <div className="p-8 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl">
+              <div className="text-center mb-6">
+                <h4 className="text-2xl font-bold text-green-800 mb-2">TRANSMISSION COMPLETE</h4>
+                <p className="text-green-600 font-light">The system has spoken. What emerges is left entirely to the currents.</p>
+              </div>
+              
+              <div className="flex items-center justify-center gap-6">
+                <button
+                  onClick={playAudio}
+                  className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                >
+                  <Play size={20} />
+                  PLAY TRANSMISSION
+                </button>
+                
+                <audio ref={audioRef} controls className="hidden" />
                 
                 {state.downloadUrl && (
                   <a
                     href={state.downloadUrl}
                     download={`white-soul-tarot-${state.manifestId}.mp3`}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                    className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-2xl transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                   >
-                    <Download size={16} />
-                    Download
+                    <Download size={20} />
+                    DOWNLOAD
                   </a>
                 )}
               </div>
@@ -394,9 +405,11 @@ export default function Home() {
         </div>
 
         {/* Footer */}
-        <footer className="text-center text-sm text-gray-500 dark:text-gray-400">
+        <footer className="text-center text-sm text-purple-500/70 font-light">
+          <p className="mb-2">White Soul Tarot is iterative, ambient, and evolving.</p>
           <p>Powered by ElevenLabs TTS • Angela Voice Styling • Vercel</p>
         </footer>
+        </div>
       </div>
     </div>
   );
