@@ -13,10 +13,10 @@ import {
   applyMacros,
   toSSML,
   chunk,
-  saveManifest,
   type TextChunk,
   type LintReport,
 } from '@/lib/styling';
+import { saveManifest } from '@/lib/store';
 
 /**
  * Request schema validation
@@ -27,7 +27,7 @@ const PrepareRequestSchema = z.object({
   preset: z.string().default('angela'),
 });
 
-type PrepareRequest = z.infer<typeof PrepareRequestSchema>;
+
 
 /**
  * Response interface
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     // Parse and validate request body
     const body = await req.json();
-    const { text, output, preset } = PrepareRequestSchema.parse(body);
+    const { text, output } = PrepareRequestSchema.parse(body);
 
     // Check input length limits
     const maxChars = parseInt(process.env.MAX_INPUT_CHARS || '20000');
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 }
       );
     }

@@ -29,7 +29,7 @@ const SynthesizeRequestSchema = z.object({
   format: z.enum(['mp3_44100_128', 'mp3_44100_192', 'wav']).default('mp3_44100_128'),
 });
 
-type SynthesizeRequest = z.infer<typeof SynthesizeRequestSchema>;
+
 
 /**
  * Response interface
@@ -143,7 +143,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     if (error instanceof z.ZodError) {
       return NextResponse.json(
-        { error: 'Invalid request data', details: error.errors },
+        { error: 'Invalid request data', details: error.issues },
         { status: 400 }
       );
     }

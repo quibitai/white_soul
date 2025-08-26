@@ -60,13 +60,13 @@ function applyPauseMacros(text: string, config: VoiceConfig): string {
 
   // Handle ellipsis with longer pause
   processed = processed.replace(
-    /\.\.\.(\\s+)/g, 
+    /\.\.\.(\s+)/g, 
     `<pause:${config.pacing.pauses.long}>$1`
   );
 
   // Handle em-dash with medium pause
   processed = processed.replace(
-    /\\s*--\\s*/g, 
+    /\s*--\s*/g, 
     ` <pause:${config.pacing.pauses.med}> `
   );
 
@@ -78,8 +78,8 @@ function applyPauseMacros(text: string, config: VoiceConfig): string {
 
   // Handle reflective/contemplative phrases with slight rate adjustment
   const reflectivePatterns = [
-    /\\b(you know|I mean|like|actually|honestly|really)\\b/gi,
-    /\\b(hmm|well|so|now|then)\\b(?=\\s*[,.;])/gi,
+    /\b(you know|I mean|like|actually|honestly|really)\b/gi,
+    /\b(hmm|well|so|now|then)\b(?=\s*[,.;])/gi,
   ];
 
   for (const pattern of reflectivePatterns) {
@@ -101,7 +101,7 @@ function applyEmphasisMacros(text: string, config: VoiceConfig): string {
   let processed = text;
 
   // Find ALL CAPS words and apply emphasis
-  const capsPattern = /\\b[A-Z]{2,}\\b/g;
+  const capsPattern = /\b[A-Z]{2,}\b/g;
   const sentences = processed.split(/([.!?]+)/);
   
   for (let i = 0; i < sentences.length; i += 2) {
@@ -140,13 +140,13 @@ function applyEmphasisMacros(text: string, config: VoiceConfig): string {
 
   // Handle **bold** markdown-style emphasis
   processed = processed.replace(
-    /\\*\\*([^*]+)\\*\\*/g, 
+    /\*\*([^*]+)\*\*/g, 
     '<emphasis:moderate>$1</emphasis>'
   );
 
   // Handle *italic* markdown-style emphasis (lighter)
   processed = processed.replace(
-    /\\*([^*]+)\\*/g, 
+    /\*([^*]+)\*/g, 
     '<emphasis:reduced>$1</emphasis>'
   );
 
@@ -164,18 +164,18 @@ function applyEndLineTweaks(text: string, config: VoiceConfig): string {
 
   // Avoid trailing em-dash if configured
   if (config.punctuation.avoid_trailing_em_dash) {
-    processed = processed.replace(/--\\s*$/gm, '');
+    processed = processed.replace(/--\s*$/gm, '');
   }
 
   // Avoid ellipsis at line start if configured
   if (config.punctuation.avoid_ellipsis_line_start) {
-    processed = processed.replace(/^\\s*\\.\\.\\.\\s*/gm, '');
+    processed = processed.replace(/^\s*\.\.\.\s*/gm, '');
   }
 
   // Drop final period when pause follows if configured
   if (config.punctuation.drop_final_period_when_pause_follows) {
     processed = processed.replace(
-      /\\.(<pause:[^>]+>)\\s*$/gm, 
+      /\.(<pause:[^>]+>)\s*$/gm, 
       '$1  ' // Replace with pause and double space for flat fall
     );
   }
@@ -193,17 +193,17 @@ export function estimateDuration(textWithMacros: string, config: VoiceConfig): n
   // Remove macros to get clean text for word count
   const cleanText = textWithMacros
     .replace(/<[^>]+>/g, '') // Remove all macro tags
-    .replace(/\\s+/g, ' ')   // Normalize whitespace
+    .replace(/\s+/g, ' ')   // Normalize whitespace
     .trim();
 
-  const words = cleanText.split(/\\s+/).length;
+  const words = cleanText.split(/\s+/).length;
   const baseSeconds = (words / config.pacing.wpm) * 60;
 
   // Add pause durations
   let pauseSeconds = 0;
-  const pauseMatches = textWithMacros.match(/<pause:(\\d+)>/g) || [];
+  const pauseMatches = textWithMacros.match(/<pause:(\d+)>/g) || [];
   for (const match of pauseMatches) {
-    const ms = parseInt(match.match(/\\d+/)?.[0] || '0');
+    const ms = parseInt(match.match(/\d+/)?.[0] || '0');
     pauseSeconds += ms / 1000;
   }
 

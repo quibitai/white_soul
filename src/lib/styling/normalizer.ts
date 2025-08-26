@@ -12,7 +12,7 @@ import { VoiceConfig } from './config';
  * @param {VoiceConfig} config - Voice configuration settings
  * @returns {string} Normalized text ready for further processing
  */
-export function normalize(text: string, config: VoiceConfig): string {
+export function normalize(text: string, _config: VoiceConfig): string {
   if (!text?.trim()) {
     return '';
   }

@@ -25,22 +25,22 @@ export function toSSML(textWithMacros: string, config: VoiceConfig): string {
   let ssml = textWithMacros;
 
   // Convert pause macros to SSML breaks
-  ssml = ssml.replace(/<pause:(\\d+)>/g, (_, ms) => {
+  ssml = ssml.replace(/<pause:(\d+)>/g, (_, ms) => {
     const seconds = parseInt(ms) / 1000;
     return `<break time="${seconds}s"/>`;
   });
 
   // Convert emphasis macros to SSML prosody
-  ssml = ssml.replace(/<emphasis:strong>([^<]+)<\\/emphasis>/g, '<prosody volume="loud" rate="95%">$1</prosody>');
-  ssml = ssml.replace(/<emphasis:moderate>([^<]+)<\\/emphasis>/g, '<prosody volume="medium" rate="98%">$1</prosody>');
-  ssml = ssml.replace(/<emphasis:reduced>([^<]+)<\\/emphasis>/g, '<prosody volume="soft" rate="102%">$1</prosody>');
+  ssml = ssml.replace(/<emphasis:strong>([^<]+)<\/emphasis>/g, '<prosody volume="loud" rate="95%">$1</prosody>');
+  ssml = ssml.replace(/<emphasis:moderate>([^<]+)<\/emphasis>/g, '<prosody volume="medium" rate="98%">$1</prosody>');
+  ssml = ssml.replace(/<emphasis:reduced>([^<]+)<\/emphasis>/g, '<prosody volume="soft" rate="102%">$1</prosody>');
 
   // Convert rate macros to SSML prosody
-  ssml = ssml.replace(/<rate:(\\d+)%>([^<]+)<\\/rate>/g, '<prosody rate="$1%">$2</prosody>');
+  ssml = ssml.replace(/<rate:(\d+)%>([^<]+)<\/rate>/g, '<prosody rate="$1%">$2</prosody>');
 
   // Escape any remaining angle brackets that aren't SSML
-  ssml = ssml.replace(/<(?!\\/?(speak|break|prosody|emphasis|phoneme|say-as|voice|audio|mark|s|p)\\b[^>]*>)/g, '&lt;');
-  ssml = ssml.replace(/(?<!<\\/?(speak|break|prosody|emphasis|phoneme|say-as|voice|audio|mark|s|p)\\b[^>]*)>/g, '&gt;');
+  ssml = ssml.replace(/<(?!\/?(speak|break|prosody|emphasis|phoneme|say-as|voice|audio|mark|s|p)\b[^>]*>)/g, '&lt;');
+  ssml = ssml.replace(/(?<!<\/?(speak|break|prosody|emphasis|phoneme|say-as|voice|audio|mark|s|p)\b[^>]*)>/g, '&gt;');
 
   // Wrap in speak tags
   ssml = `<speak>${ssml}</speak>`;
@@ -60,10 +60,10 @@ export function cleanMacros(textWithMacros: string): string {
   }
 
   return textWithMacros
-    .replace(/<pause:\\d+>/g, '') // Remove pause macros
-    .replace(/<emphasis:[^>]+>([^<]+)<\\/emphasis>/g, '$1') // Remove emphasis, keep content
-    .replace(/<rate:[^>]+>([^<]+)<\\/rate>/g, '$1') // Remove rate, keep content
-    .replace(/\\s+/g, ' ') // Normalize whitespace
+    .replace(/<pause:\d+>/g, '') // Remove pause macros
+    .replace(/<emphasis:[^>]+>([^<]+)<\/emphasis>/g, '$1') // Remove emphasis, keep content
+    .replace(/<rate:[^>]+>([^<]+)<\/rate>/g, '$1') // Remove rate, keep content
+    .replace(/\s+/g, ' ') // Normalize whitespace
     .trim();
 }
 
@@ -84,29 +84,29 @@ function validateAndCleanSSML(ssml: string): string {
   }
 
   // Fix nested speak tags
-  cleaned = cleaned.replace(/<speak>\\s*<speak>/g, '<speak>');
-  cleaned = cleaned.replace(/<\\/speak>\\s*<\\/speak>/g, '</speak>');
+  cleaned = cleaned.replace(/<speak>\s*<speak>/g, '<speak>');
+  cleaned = cleaned.replace(/<\/speak>\s*<\/speak>/g, '</speak>');
 
   // Fix unclosed prosody tags
   const prosodyOpens = (cleaned.match(/<prosody[^>]*>/g) || []).length;
-  const prosodyCloses = (cleaned.match(/<\\/prosody>/g) || []).length;
+  const prosodyCloses = (cleaned.match(/<\/prosody>/g) || []).length;
   
   if (prosodyOpens > prosodyCloses) {
     const missing = prosodyOpens - prosodyCloses;
     for (let i = 0; i < missing; i++) {
-      cleaned = cleaned.replace(/<\\/speak>$/, '</prosody></speak>');
+      cleaned = cleaned.replace(/<\/speak>$/, '</prosody></speak>');
     }
   }
 
   // Remove empty prosody tags
-  cleaned = cleaned.replace(/<prosody[^>]*>\\s*<\\/prosody>/g, '');
+  cleaned = cleaned.replace(/<prosody[^>]*>\s*<\/prosody>/g, '');
 
   // Fix break tags (ensure self-closing)
-  cleaned = cleaned.replace(/<break([^>]*)>(?!\\s*<\\/break>)/g, '<break$1/>');
-  cleaned = cleaned.replace(/<break([^>]*)><\\/break>/g, '<break$1/>');
+  cleaned = cleaned.replace(/<break([^>]*)>(?!\s*<\/break>)/g, '<break$1/>');
+  cleaned = cleaned.replace(/<break([^>]*)><\/break>/g, '<break$1/>');
 
   // Ensure break time values are valid
-  cleaned = cleaned.replace(/time="(\\d+(?:\\.\\d+)?)"/g, (match, value) => {
+  cleaned = cleaned.replace(/time="(\d+(?:\.\d+)?)"/g, (match, value) => {
     const num = parseFloat(value);
     if (num > 10) return 'time="10s"'; // Cap at 10 seconds
     if (num < 0) return 'time="0s"';
@@ -114,8 +114,8 @@ function validateAndCleanSSML(ssml: string): string {
   });
 
   // Remove excessive whitespace within SSML
-  cleaned = cleaned.replace(/>\\s+</g, '><');
-  cleaned = cleaned.replace(/\\s+/g, ' ');
+  cleaned = cleaned.replace(/>\s+</g, '><');
+  cleaned = cleaned.replace(/\s+/g, ' ');
 
   return cleaned.trim();
 }
@@ -135,7 +135,7 @@ export function extractTextFromSSML(ssml: string): string {
     .replace(/&lt;/g, '<')   // Decode escaped characters
     .replace(/&gt;/g, '>')
     .replace(/&amp;/g, '&')
-    .replace(/\\s+/g, ' ')   // Normalize whitespace
+    .replace(/\s+/g, ' ')   // Normalize whitespace
     .trim();
 }
 

@@ -96,7 +96,7 @@ function segmentSentences(text: string): string[] {
   
   for (let i = 0; i < text.length; i++) {
     const char = text[i];
-    const nextChar = text[i + 1];
+
     
     // Track if we're inside a macro tag
     if (char === '<') {
@@ -111,7 +111,7 @@ function segmentSentences(text: string): string[] {
     if (!inMacro && /[.!?]/.test(char)) {
       // Look ahead to see if this is really a sentence end
       const remaining = text.slice(i + 1);
-      const nextNonSpace = remaining.match(/^\\s*(.)/)?.[1];
+      const nextNonSpace = remaining.match(/^\s*(.)/)?.[1];
       
       // End sentence if:
       // - Next character is uppercase letter or end of text
@@ -119,7 +119,7 @@ function segmentSentences(text: string): string[] {
       // - We're at the end of the text
       if (!nextNonSpace || 
           /[A-Z]/.test(nextNonSpace) || 
-          remaining.startsWith('\\n') ||
+          remaining.startsWith('\n') ||
           i === text.length - 1) {
         
         sentences.push(current.trim());

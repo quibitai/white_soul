@@ -92,7 +92,7 @@ export default function Home() {
   /**
    * Synthesizes audio from prepared manifest
    */
-  const synthesizeAudio = async (manifestId: string, isProof = false) => {
+  const synthesizeAudio = async (manifestId: string) => {
     try {
       const response = await fetch('/api/synthesize', {
         method: 'POST',
@@ -141,7 +141,7 @@ export default function Home() {
       report: prepared.report,
     });
 
-    const result = await synthesizeAudio(prepared.manifestId, true);
+    const result = await synthesizeAudio(prepared.manifestId);
     if (!result) {
       setState({ status: 'error', error: 'Failed to generate proof audio.' });
       return;
@@ -177,7 +177,7 @@ export default function Home() {
       report: prepared.report,
     });
 
-    const result = await synthesizeAudio(prepared.manifestId, false);
+    const result = await synthesizeAudio(prepared.manifestId);
     if (!result) {
       setState({ status: 'error', error: 'Failed to generate full audio.' });
       return;

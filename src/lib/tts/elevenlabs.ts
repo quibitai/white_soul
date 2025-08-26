@@ -170,7 +170,7 @@ export async function validateElevenLabsConfig(): Promise<boolean> {
  * Gets available voices from ElevenLabs API
  * @returns {Promise<any[]>} Array of available voices
  */
-export async function getAvailableVoices(): Promise<any[]> {
+export async function getAvailableVoices(): Promise<unknown[]> {
   if (!process.env.ELEVENLABS_API_KEY) {
     throw new Error('ELEVENLABS_API_KEY environment variable is required');
   }

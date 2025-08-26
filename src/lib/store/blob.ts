@@ -24,7 +24,7 @@ export async function putAudio(
   filename: string,
   audioBuffer: Buffer,
   options: {
-    access?: 'public' | 'private';
+    access?: 'public';
     contentType?: string;
   } = {}
 ): Promise<BlobStorageResult> {
@@ -42,7 +42,7 @@ export async function putAudio(
       downloadUrl: blob.downloadUrl || blob.url,
       publicUrl: blob.url,
       pathname: blob.pathname,
-      size: blob.size,
+      size: audioBuffer.length, // Use buffer length as size
     };
   } catch (error) {
     if (error instanceof Error) {
@@ -121,7 +121,7 @@ export function isBlobStorageAvailable(): boolean {
  * @param {number} retentionDays - Number of days to retain files
  * @returns {Promise<number>} Number of files deleted (always 0 for now)
  */
-export async function cleanupOldAudioFiles(retentionDays: number = 14): Promise<number> {
+export async function cleanupOldAudioFiles(_retentionDays: number = 14): Promise<number> {
   // TODO: Implement cleanup when file tracking is added
   // For now, rely on manual cleanup or external processes
   console.warn('Automatic cleanup not implemented for Vercel Blob. Consider implementing file tracking.');

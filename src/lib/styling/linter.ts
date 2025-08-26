@@ -120,7 +120,7 @@ export function lint(text: string, config: VoiceConfig): LintReport {
   }, {} as Record<string, number>);
 
   const overusedWords = Object.entries(wordCounts)
-    .filter(([_, count]) => count > Math.max(2, Math.floor(sentences.length * 0.2)))
+    .filter(([, count]) => count > Math.max(2, Math.floor(sentences.length * 0.2)))
     .map(([word, count]) => `"${word}" (${count} times)`);
 
   if (overusedWords.length > 0) {
