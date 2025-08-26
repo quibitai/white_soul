@@ -50,6 +50,8 @@ const VoiceConfigSchema = z.object({
   }),
   emphasis: z.object({
     use_ssml: z.boolean(),
+    use_prosody: z.boolean(),
+    use_emphasis_tags: z.boolean(),
     caps_max_per_clause: z.number(),
     caps_max_per_sentence: z.number(),
   }),
@@ -65,6 +67,15 @@ const VoiceConfigSchema = z.object({
     avoid_trailing_em_dash: z.boolean(),
     avoid_ellipsis_line_start: z.boolean(),
     drop_final_period_when_pause_follows: z.boolean(),
+  }),
+  pronunciation: z.object({
+    max_dictionaries: z.number(),
+    default_dictionaries: z.array(z.string()),
+    break_clamp_ms: z.number(),
+  }),
+  websocket: z.object({
+    enable_ssml_parsing: z.boolean(),
+    avoid_tag_splitting: z.boolean(),
   }),
 });
 

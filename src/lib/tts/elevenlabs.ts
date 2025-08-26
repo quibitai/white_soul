@@ -4,6 +4,8 @@
  */
 
 import { VoiceConfig } from '../styling/config';
+import { sanitizeForModel, getModelCapabilities, getRecommendedSettings } from './model-caps';
+import { selectDictionaries, toElevenLabsFormat } from './pronunciation';
 
 export interface TTSOptions {
   text: string;
@@ -13,6 +15,8 @@ export interface TTSOptions {
   seed?: number;
   previousText?: string;
   nextText?: string;
+  pronunciationDictionaries?: string[]; // Dictionary IDs to use
+  enableSSMLParsing?: boolean; // For WebSocket streaming
 }
 
 export interface TTSResponse {
@@ -26,7 +30,17 @@ export interface TTSResponse {
  * @returns {Promise<TTSResponse>} Audio buffer and metadata
  */
 export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
-  const { text, voiceId, modelId, format, seed, previousText, nextText } = options;
+  const { 
+    text, 
+    voiceId, 
+    modelId, 
+    format, 
+    seed, 
+    previousText, 
+    nextText, 
+    pronunciationDictionaries = [],
+    enableSSMLParsing = false 
+  } = options;
 
   if (!text?.trim()) {
     throw new Error('Text is required for TTS synthesis');
@@ -36,21 +50,37 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
     throw new Error('ELEVENLABS_API_KEY environment variable is required');
   }
 
+  // Get model capabilities and sanitize text
+  const modelCaps = getModelCapabilities(modelId);
+  const sanitizedText = sanitizeForModel(text.trim(), modelId);
+  
+  // Get recommended voice settings for the model
+  const recommendedSettings = getRecommendedSettings(modelId);
+
+  // Select pronunciation dictionaries (max 3)
+  const selectedDictionaries = selectDictionaries(pronunciationDictionaries, modelCaps.maxDictionaries);
+  const pronunciationData = toElevenLabsFormat(selectedDictionaries);
+
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${format}`;
   
-  const requestBody = {
-    text: text.trim(),
+  const requestBody: Record<string, unknown> = {
+    text: sanitizedText,
     model_id: modelId,
-    voice_settings: {
-      stability: 0.35,
-      similarity_boost: 0.8,
-      style: 0.2,
-      speaker_boost: true,
-    },
+    voice_settings: recommendedSettings,
     ...(seed && { seed }),
-    ...(previousText && { previous_text: previousText }),
-    ...(nextText && { next_text: nextText }),
+    ...(previousText && { previous_text: previousText.slice(-300) }), // Limit context length
+    ...(nextText && { next_text: nextText.slice(0, 300) }), // Limit context length
   };
+
+  // Add pronunciation dictionaries if supported and available
+  if (modelCaps.supportsPronunciationDictionaries && pronunciationData.length > 0) {
+    requestBody.pronunciation_dictionary_locators = pronunciationData;
+  }
+
+  // Add SSML parsing flag for WebSocket streaming
+  if (enableSSMLParsing && modelCaps.supportsWebSocket) {
+    requestBody.enable_ssml_parsing = true;
+  }
 
   try {
     const response = await fetch(url, {
@@ -102,6 +132,9 @@ export async function synthesizeChunks(
   const audioBuffers: Buffer[] = [];
   let previousText: string | undefined;
 
+  // Prepare pronunciation dictionaries from config
+  const pronunciationDictionaries = config.pronunciation?.default_dictionaries || [];
+
   for (let i = 0; i < chunks.length; i++) {
     const chunk = chunks[i];
     const nextText = i < chunks.length - 1 ? chunks[i + 1].slice(0, 300) : undefined;
@@ -114,6 +147,8 @@ export async function synthesizeChunks(
       seed: baseOptions.seed || config.voice.seed,
       previousText,
       nextText,
+      pronunciationDictionaries,
+      enableSSMLParsing: config.websocket?.enable_ssml_parsing || false,
     };
 
     const result = await ttsChunk(options);

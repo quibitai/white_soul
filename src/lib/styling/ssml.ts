@@ -24,19 +24,42 @@ export function toSSML(textWithMacros: string, config: VoiceConfig): string {
 
   let ssml = textWithMacros;
 
-  // Convert pause macros to SSML breaks
+  // Convert pause macros to SSML breaks with clamping
   ssml = ssml.replace(/<pause:(\d+)>/g, (_, ms) => {
-    const seconds = parseInt(ms) / 1000;
+    const clampedMs = Math.min(parseInt(ms), config.pronunciation.break_clamp_ms);
+    const seconds = (clampedMs / 1000).toFixed(clampedMs % 1000 === 0 ? 0 : 1);
     return `<break time="${seconds}s"/>`;
   });
 
-  // Convert emphasis macros to SSML prosody
-  ssml = ssml.replace(/<emphasis:strong>([^<]+)<\/emphasis>/g, '<prosody volume="loud" rate="95%">$1</prosody>');
-  ssml = ssml.replace(/<emphasis:moderate>([^<]+)<\/emphasis>/g, '<prosody volume="medium" rate="98%">$1</prosody>');
-  ssml = ssml.replace(/<emphasis:reduced>([^<]+)<\/emphasis>/g, '<prosody volume="soft" rate="102%">$1</prosody>');
+  // Only add prosody tags if explicitly enabled
+  if (config.emphasis.use_prosody) {
+    ssml = ssml.replace(/<emphasis:strong>([^<]+)<\/emphasis>/g, '<prosody volume="loud" rate="95%">$1</prosody>');
+    ssml = ssml.replace(/<emphasis:moderate>([^<]+)<\/emphasis>/g, '<prosody volume="medium" rate="98%">$1</prosody>');
+    ssml = ssml.replace(/<emphasis:reduced>([^<]+)<\/emphasis>/g, '<prosody volume="soft" rate="102%">$1</prosody>');
+    
+    // Convert rate macros to SSML prosody
+    ssml = ssml.replace(/<rate:(\d+)%>([^<]+)<\/rate>/g, '<prosody rate="$1%">$2</prosody>');
+  } else {
+    // Remove emphasis macros if prosody is disabled
+    ssml = ssml.replace(/<emphasis:[^>]+>([^<]+)<\/emphasis>/g, '$1');
+    ssml = ssml.replace(/<rate:[^>]+>([^<]+)<\/rate>/g, '$1');
+  }
 
-  // Convert rate macros to SSML prosody
-  ssml = ssml.replace(/<rate:(\d+)%>([^<]+)<\/rate>/g, '<prosody rate="$1%">$2</prosody>');
+  // Only add emphasis tags if explicitly enabled
+  if (!config.emphasis.use_emphasis_tags) {
+    ssml = ssml.replace(/<emphasis[^>]*>([^<]+)<\/emphasis>/g, '$1');
+  }
+
+  // Clamp existing break times
+  ssml = ssml.replace(/<break\s+time="(\d+(?:\.\d+)?)s?"[^>]*\/>/g, (match, timeStr) => {
+    const timeMs = parseFloat(timeStr) * (timeStr.includes('.') ? 1000 : 1);
+    const clampedMs = Math.min(timeMs, config.pronunciation.break_clamp_ms);
+    const clampedSeconds = (clampedMs / 1000).toFixed(clampedMs % 1000 === 0 ? 0 : 1);
+    return `<break time="${clampedSeconds}s"/>`;
+  });
+
+  // Apply two-space rule before breaks at line ends
+  ssml = ssml.replace(/\s*<break[^>]*\/>\s*$/gm, '  <break time="0.4s"/>');
 
   // Escape any remaining angle brackets that aren't SSML
   ssml = ssml.replace(/<(?!\/?(speak|break|prosody|emphasis|phoneme|say-as|voice|audio|mark|s|p)\b[^>]*>)/g, '&lt;');
@@ -46,7 +69,7 @@ export function toSSML(textWithMacros: string, config: VoiceConfig): string {
   ssml = `<speak>${ssml}</speak>`;
 
   // Validate and clean up the SSML
-  return validateAndCleanSSML(ssml);
+  return validateAndCleanSSML(ssml, config);
 }
 
 /**
@@ -70,9 +93,10 @@ export function cleanMacros(textWithMacros: string): string {
 /**
  * Validates SSML markup and fixes common issues
  * @param {string} ssml - SSML markup to validate
+ * @param {VoiceConfig} config - Voice configuration for validation rules
  * @returns {string} Validated and cleaned SSML
  */
-function validateAndCleanSSML(ssml: string): string {
+function validateAndCleanSSML(ssml: string, config: VoiceConfig): string {
   let cleaned = ssml;
 
   // Ensure proper speak tag wrapping
@@ -105,11 +129,15 @@ function validateAndCleanSSML(ssml: string): string {
   cleaned = cleaned.replace(/<break([^>]*)>(?!\s*<\/break>)/g, '<break$1/>');
   cleaned = cleaned.replace(/<break([^>]*)><\/break>/g, '<break$1/>');
 
-  // Ensure break time values are valid
-  cleaned = cleaned.replace(/time="(\d+(?:\.\d+)?)"/g, (match, value) => {
-    const num = parseFloat(value);
-    if (num > 10) return 'time="10s"'; // Cap at 10 seconds
-    if (num < 0) return 'time="0s"';
+  // Ensure break time values are valid using config limits
+  cleaned = cleaned.replace(/time="(\d+(?:\.\d+)?)s?"/g, (match, value) => {
+    const timeMs = parseFloat(value) * (value.includes('.') ? 1000 : 1);
+    const maxMs = config.pronunciation.break_clamp_ms;
+    if (timeMs > maxMs) {
+      const clampedSeconds = (maxMs / 1000).toFixed(maxMs % 1000 === 0 ? 0 : 1);
+      return `time="${clampedSeconds}s"`;
+    }
+    if (timeMs < 0) return 'time="0s"';
     return match;
   });
 

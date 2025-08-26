@@ -40,7 +40,9 @@ group_address:
   max_consecutive: 2
 
 emphasis:
-  use_ssml: false            # set true only if your model handles SSML well
+  use_ssml: false            # disabled by default for model compatibility
+  use_prosody: false         # disabled by default - only breaks allowed
+  use_emphasis_tags: false   # disabled by default for stability
   caps_max_per_clause: 1
   caps_max_per_sentence: 2
 
@@ -55,3 +57,14 @@ punctuation:
   avoid_trailing_em_dash: true
   avoid_ellipsis_line_start: true
   drop_final_period_when_pause_follows: true  # to avoid end-of-line lift
+
+pronunciation:
+  max_dictionaries: 3       # maximum pronunciation dictionaries to attach
+  default_dictionaries:    # always attach these if available
+    - "tarot-terms"
+    - "angela-custom"
+  break_clamp_ms: 2200      # maximum break time in milliseconds
+
+websocket:
+  enable_ssml_parsing: true # enable SSML parsing for streaming
+  avoid_tag_splitting: true # don't split SSML tags across frames
