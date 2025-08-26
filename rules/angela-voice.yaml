@@ -68,3 +68,39 @@ pronunciation:
 websocket:
   enable_ssml_parsing: true # enable SSML parsing for streaming
   avoid_tag_splitting: true # don't split SSML tags across frames
+
+conversational_realism:
+  you_guys_ratio: 0.35      # 35% of "you" should be "you guys"
+  verbal_hesitation_ratio: 0.25  # 25% of breaks replaced with verbal cues
+  run_on_sentence_ratio: 0.30    # 30% more sentence combining
+  all_caps_frequency: 0.15       # 15% of key words should be ALL CAPS
+  avoid_repetitive_negation: true # Reduce "it's not X, it's not Y" patterns
+  mystical_vocabulary: true      # Use evocative spiritual language
+
+speech_patterns:
+  hesitation_cues:
+    - "yeah"
+    - "like"
+    - "so yeah"
+    - "it's like"
+    - "I mean"
+  
+  emphasis_words:
+    - "power"
+    - "energy"
+    - "truth"
+    - "clarity"
+    - "space"
+    - "move"
+    - "feel"
+    - "see"
+    - "know"
+    - "trust"
+  
+  mystical_replacements:
+    "connection": "currents"
+    "moment": "portal" 
+    "change": "transmission"
+    "insight": "revelation"
+    "feeling": "resonance"
+    "understanding": "clarity"

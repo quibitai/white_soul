@@ -11,6 +11,7 @@ import {
   normalize,
   lint,
   applyMacros,
+  applyConversationalRealism,
   toSSML,
   chunk,
   type TextChunk,
@@ -68,7 +69,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const normalized = normalize(text, config);
     const report = lint(normalized, config);
     const withMacros = applyMacros(normalized, config);
-    const chunks = chunk(withMacros, config);
+    const conversational = applyConversationalRealism(withMacros, config);
+    const chunks = chunk(conversational, config);
 
     // Convert to SSML or keep as text based on output preference
     const processedChunks: TextChunk[] = chunks.map((chunk) => ({

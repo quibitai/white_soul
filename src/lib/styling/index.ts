@@ -18,3 +18,6 @@ export {
   getChunkingStats, 
   type TextChunk 
 } from './chunker';
+
+// Conversational realism
+export { applyConversationalRealism, analyzeConversationalRealism } from './conversational';

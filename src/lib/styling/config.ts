@@ -77,6 +77,19 @@ const VoiceConfigSchema = z.object({
     enable_ssml_parsing: z.boolean(),
     avoid_tag_splitting: z.boolean(),
   }),
+  conversational_realism: z.object({
+    you_guys_ratio: z.number(),
+    verbal_hesitation_ratio: z.number(),
+    run_on_sentence_ratio: z.number(),
+    all_caps_frequency: z.number(),
+    avoid_repetitive_negation: z.boolean(),
+    mystical_vocabulary: z.boolean(),
+  }),
+  speech_patterns: z.object({
+    hesitation_cues: z.array(z.string()),
+    emphasis_words: z.array(z.string()),
+    mystical_replacements: z.record(z.string(), z.string()),
+  }),
 });
 
 export type VoiceConfig = z.infer<typeof VoiceConfigSchema>;
