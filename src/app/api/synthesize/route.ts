@@ -92,8 +92,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Select optimal model for full synthesis (high quality)
     const finalVoiceId = voiceId || process.env.ELEVEN_VOICE_ID || config.voice.voice_id;
     const baseModelId = modelId || process.env.ELEVEN_MODEL_ID || config.voice.model_id;
-    const optimalModelId = selectOptimalModel('full', config, ['ssml', 'voice_settings']);
-    const finalModelId = modelId ? baseModelId : optimalModelId; // Use provided model or optimal selection
+    const optimalModelId = selectOptimalModel('full', config, ['audio_tags', 'emotional_delivery']);
+    const finalModelId = modelId || optimalModelId; // Use provided model or optimal selection
+    
+    console.log('🎯 Model Selection Debug:', {
+      providedModelId: modelId,
+      envModelId: process.env.ELEVEN_MODEL_ID,
+      configModelId: config.voice.model_id,
+      baseModelId,
+      optimalModelId,
+      finalModelId
+    });
 
     // Get model-optimized voice settings
     const optimizedSettings = getModelOptimizedSettings(finalModelId, 'full');
