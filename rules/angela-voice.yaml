@@ -121,9 +121,10 @@ speech_patterns:
     - "exactly"
   
   mystical_replacements:
-    "connection": "currents"
-    "moment": "portal" 
-    "change": "transmission"
-    "insight": "revelation"
-    "feeling": "resonance"
-    "understanding": "clarity"
+    # More contextual replacements to avoid confusing TTS artifacts
+    "deep connection": "deep currents"
+    "this moment": "this portal" 
+    "major change": "transmission"
+    "sudden insight": "revelation"
+    # Removed "feeling" -> "resonance" as it causes confusion
+    "true understanding": "clarity"

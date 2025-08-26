@@ -34,6 +34,7 @@ interface ProcessingState {
     withMacros: string;
     conversational: string;
     wst2Formatted: string;
+    sanitized: string;
     finalOutput: string;
     pipeline: Array<{
       step: string;
@@ -173,6 +174,7 @@ export default function Home() {
       status: 'ready',
       manifestId: prepared.manifestId,
       report: prepared.report,
+      processing: prepared.processing, // Preserve processing data
       audioUrl: result.audioUrl,
       downloadUrl: result.downloadUrl,
     });
@@ -210,6 +212,7 @@ export default function Home() {
       status: 'ready',
       manifestId: prepared.manifestId,
       report: prepared.report,
+      processing: prepared.processing, // Preserve processing data
       audioUrl: result.audioUrl,
       downloadUrl: result.downloadUrl,
     });
@@ -445,6 +448,13 @@ export default function Home() {
                       <h5 className="font-bold text-purple-800 mb-2">🎭 AFTER WST2 RULES</h5>
                       <pre className="text-sm text-purple-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
                         {state.processing.wst2Formatted}
+                      </pre>
+                    </div>
+
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                      <h5 className="font-bold text-red-800 mb-2">🧹 AFTER SANITIZATION</h5>
+                      <pre className="text-sm text-red-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
+                        {state.processing.sanitized}
                       </pre>
                     </div>
 

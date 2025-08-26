@@ -24,3 +24,6 @@ export { applyConversationalRealism, analyzeConversationalRealism } from './conv
 
 // WST2 Studio Speech Rules
 export { applyWST2Rules, validateWST2Rules, analyzeWST2Compliance } from './wst2-rules';
+
+// TTS Sanitization
+export { sanitizeForTTS, analyzeTTSArtifacts } from './sanitizer';

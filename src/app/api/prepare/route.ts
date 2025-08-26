@@ -13,6 +13,7 @@ import {
   applyMacros,
   applyConversationalRealism,
   applyWST2Rules,
+  sanitizeForTTS,
   toSSML,
   chunk,
   type TextChunk,
@@ -48,6 +49,7 @@ interface PrepareResponse {
     withMacros: string;
     conversational: string;
     wst2Formatted: string;
+    sanitized: string;
     finalOutput: string;
     pipeline: Array<{
       step: string;
@@ -84,7 +86,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const withMacros = applyMacros(normalized, config);
     const conversational = applyConversationalRealism(withMacros, config);
     const wst2Formatted = applyWST2Rules(conversational, config);
-    const chunks = chunk(wst2Formatted, config);
+    const sanitized = sanitizeForTTS(wst2Formatted, config);
+    const chunks = chunk(sanitized, config);
 
     // Convert to SSML or keep as text based on output preference
     const processedChunks: TextChunk[] = chunks.map((chunk) => ({
@@ -116,6 +119,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         withMacros: withMacros,
         conversational: conversational,
         wst2Formatted: wst2Formatted,
+        sanitized: sanitized,
         finalOutput: processedChunks.map(chunk => chunk.body).join('\n\n'),
         pipeline: [
           { step: 'normalize', description: 'Text normalization and cleanup' },
@@ -123,6 +127,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           { step: 'macros', description: 'Pause and emphasis macro insertion' },
           { step: 'conversational', description: 'Conversational realism enhancements' },
           { step: 'wst2', description: 'WST2 Studio Speech Rules formatting' },
+          { step: 'sanitize', description: 'TTS artifact removal and cleanup' },
           { step: 'chunk', description: 'Text segmentation for TTS' },
           { step: 'ssml', description: output === 'ssml' ? 'SSML conversion applied' : 'Text output (no SSML conversion)' },
         ],

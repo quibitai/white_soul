@@ -213,11 +213,14 @@ function applyMysticalVocabulary(text: string, config: VoiceConfig): string {
   let processed = text;
   
   for (const [original, mystical] of Object.entries(replacements)) {
-    // Replace with 30% probability to maintain variety
-    const pattern = new RegExp(`\\b${original}\\b`, 'gi');
-    processed = processed.replace(pattern, (match) => {
-      return Math.random() < 0.3 ? mystical : match;
-    });
+    // Use phrase-based replacements (2+ words) to avoid confusing single-word swaps
+    if (original.split(' ').length >= 2) {
+      // Replace with 20% probability to maintain variety and avoid over-mystification
+      const pattern = new RegExp(original.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      processed = processed.replace(pattern, (match) => {
+        return Math.random() < 0.2 ? mystical : match;
+      });
+    }
   }
   
   return processed;
