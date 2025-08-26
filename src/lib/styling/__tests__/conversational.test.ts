@@ -3,10 +3,10 @@
  */
 
 import { applyConversationalRealism, analyzeConversationalRealism } from '../conversational';
-import { loadConfig } from '../config';
+import type { VoiceConfig } from '../config';
 
 // Mock configuration for testing
-const mockConfig = {
+const mockConfig: Partial<VoiceConfig> = {
   conversational_realism: {
     you_guys_ratio: 0.35,
     verbal_hesitation_ratio: 0.25,
@@ -27,13 +27,13 @@ const mockConfig = {
       'understanding': 'clarity',
     },
   },
-} as any;
+} satisfies Partial<VoiceConfig>;
 
 describe('Conversational Realism', () => {
   describe('applyConversationalRealism', () => {
     it('should replace "you" with "you guys" at configured ratio', () => {
       const text = 'You need to trust yourself. You have the power. You can see the truth.';
-      const result = applyConversationalRealism(text, mockConfig);
+      const result = applyConversationalRealism(text, mockConfig as VoiceConfig);
       
       // Should contain some "you guys" replacements
       expect(result).toMatch(/you guys/i);
@@ -44,7 +44,7 @@ describe('Conversational Realism', () => {
 
     it('should add ALL CAPS emphasis to key words', () => {
       const text = 'You have the power to see the truth and feel the energy within.';
-      const result = applyConversationalRealism(text, mockConfig);
+      const result = applyConversationalRealism(text, mockConfig as VoiceConfig);
       
       // Should contain some emphasized words
       expect(result).toMatch(/\b[A-Z]{2,}\b/);
@@ -52,7 +52,7 @@ describe('Conversational Realism', () => {
 
     it('should replace some breaks with hesitation cues', () => {
       const text = 'This is important <break time="0.5s"/> and you need to understand <break time="1s"/> the message.';
-      const result = applyConversationalRealism(text, mockConfig);
+      const result = applyConversationalRealism(text, mockConfig as VoiceConfig);
       
       // Should contain hesitation cues
       expect(result).toMatch(/\b(yeah|like|so yeah|it's like|I mean)\b/i);
@@ -60,7 +60,7 @@ describe('Conversational Realism', () => {
 
     it('should apply mystical vocabulary replacements', () => {
       const text = 'This connection brings insight and understanding of the moment.';
-      const result = applyConversationalRealism(text, mockConfig);
+      const result = applyConversationalRealism(text, mockConfig as VoiceConfig);
       
       // May contain mystical replacements (30% probability each)
       // We can't guarantee specific replacements due to randomness, but structure should be preserved
@@ -70,7 +70,7 @@ describe('Conversational Realism', () => {
 
     it('should reduce repetitive negation patterns', () => {
       const text = 'It\'s not about fear. It\'s not about doubt. It\'s not about confusion.';
-      const result = applyConversationalRealism(text, mockConfig);
+      const result = applyConversationalRealism(text, mockConfig as VoiceConfig);
       
       // Should transform repetitive "it's not" patterns
       expect(result).toMatch(/this isn't about/i);
