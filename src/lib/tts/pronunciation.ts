@@ -103,13 +103,8 @@ export function selectDictionaries(
  */
 export function toElevenLabsFormat(dictionaries: PronunciationDictionary[]): object[] {
   return dictionaries.map(dict => ({
-    dictionary_id: dict.id,
+    pronunciation_dictionary_id: dict.id,
     version_id: 'latest',
-    rules: dict.rules.map(rule => ({
-      string_to_replace: rule.word,
-      phonetic_transcription: rule.pronunciation,
-      type: rule.type,
-    })),
   }));
 }
 

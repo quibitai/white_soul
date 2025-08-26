@@ -58,8 +58,9 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   const recommendedSettings = getRecommendedSettings(modelId);
 
   // Select pronunciation dictionaries (max 3)
-  const selectedDictionaries = selectDictionaries(pronunciationDictionaries, modelCaps.maxDictionaries);
-  const pronunciationData = toElevenLabsFormat(selectedDictionaries);
+  // Note: Temporarily disabled until dictionaries are set up in ElevenLabs dashboard
+  // const selectedDictionaries = selectDictionaries(pronunciationDictionaries, modelCaps.maxDictionaries);
+  // const pronunciationData = toElevenLabsFormat(selectedDictionaries);
 
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${format}`;
   
@@ -73,9 +74,11 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   };
 
   // Add pronunciation dictionaries if supported and available
-  if (modelCaps.supportsPronunciationDictionaries && pronunciationData.length > 0) {
-    requestBody.pronunciation_dictionary_locators = pronunciationData;
-  }
+  // Note: Pronunciation dictionaries must be pre-created in ElevenLabs dashboard
+  // Temporarily disabled until dictionaries are set up
+  // if (modelCaps.supportsPronunciationDictionaries && pronunciationData.length > 0) {
+  //   requestBody.pronunciation_dictionary_locators = pronunciationData;
+  // }
 
   // Add SSML parsing flag for WebSocket streaming
   if (enableSSMLParsing && modelCaps.supportsWebSocket) {
