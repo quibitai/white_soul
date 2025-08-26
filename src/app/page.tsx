@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { Upload, Play, Download, AlertCircle, CheckCircle, Loader2 } from 'lucide-react';
+import { Upload, Play, Download, AlertCircle, CheckCircle, Loader2, Code } from 'lucide-react';
 
 interface LintReport {
   warnings: string[];
@@ -28,12 +28,25 @@ interface ProcessingState {
   downloadUrl?: string;
   error?: string;
   progress?: string;
+  processing?: {
+    originalText: string;
+    normalized: string;
+    withMacros: string;
+    conversational: string;
+    wst2Formatted: string;
+    finalOutput: string;
+    pipeline: Array<{
+      step: string;
+      description: string;
+    }>;
+  };
 }
 
 export default function Home() {
   const [text, setText] = useState('');
   const [state, setState] = useState<ProcessingState>({ status: 'idle' });
   const [showReport, setShowReport] = useState(false);
+  const [showProcessing, setShowProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -64,7 +77,11 @@ export default function Home() {
   /**
    * Processes text through the preparation pipeline
    */
-  const prepareText = async (): Promise<{ manifestId: string; report: LintReport } | null> => {
+  const prepareText = async (): Promise<{ 
+    manifestId: string; 
+    report: LintReport; 
+    processing?: ProcessingState['processing'] 
+  } | null> => {
     try {
       const response = await fetch('/api/prepare', {
         method: 'POST',
@@ -82,7 +99,11 @@ export default function Home() {
       }
 
       const data = await response.json();
-      return { manifestId: data.manifestId, report: data.report };
+      return { 
+        manifestId: data.manifestId, 
+        report: data.report,
+        processing: data.processing 
+      };
     } catch (error) {
       console.error('Preparation error:', error);
       return null;
@@ -139,6 +160,7 @@ export default function Home() {
       progress: 'Generating proof audio...',
       manifestId: prepared.manifestId,
       report: prepared.report,
+      processing: prepared.processing,
     });
 
     const result = await synthesizeAudio(prepared.manifestId);
@@ -175,6 +197,7 @@ export default function Home() {
       progress: 'Generating full audio...',
       manifestId: prepared.manifestId,
       report: prepared.report,
+      processing: prepared.processing,
     });
 
     const result = await synthesizeAudio(prepared.manifestId);
@@ -357,6 +380,79 @@ export default function Home() {
                         <span className="text-purple-600 font-semibold text-sm block">CONSECUTIVE</span>
                         <span className="text-purple-900 font-bold text-xl">{state.report!.stats.consecutiveGroupAddress}</span>
                       </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Processing Annotations */}
+          {state.processing && (
+            <div className="mb-8">
+              <button
+                onClick={() => setShowProcessing(!showProcessing)}
+                className="flex items-center gap-3 text-lg font-semibold text-indigo-700 hover:text-indigo-800 transition-colors"
+              >
+                <Code size={20} />
+                PROCESSING PIPELINE (ElevenLabs Output)
+              </button>
+              
+              {showProcessing && (
+                <div className="mt-6 space-y-6">
+                  {/* Pipeline Steps */}
+                  <div className="p-6 bg-indigo-50 border-2 border-indigo-200 rounded-2xl">
+                    <h4 className="text-xl font-bold text-indigo-800 mb-4">🔄 PROCESSING STEPS</h4>
+                    <div className="space-y-3">
+                      {state.processing.pipeline.map((step, index) => (
+                        <div key={step.step} className="flex items-center gap-3">
+                          <span className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
+                            {index + 1}
+                          </span>
+                          <div>
+                            <span className="font-semibold text-indigo-800 capitalize">{step.step}</span>
+                            <p className="text-indigo-600 text-sm">{step.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Text Transformations */}
+                  <div className="grid gap-4">
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                      <h5 className="font-bold text-gray-800 mb-2">📝 ORIGINAL TEXT</h5>
+                      <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
+                        {state.processing.originalText}
+                      </pre>
+                    </div>
+
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <h5 className="font-bold text-blue-800 mb-2">🔧 AFTER MACROS</h5>
+                      <pre className="text-sm text-blue-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
+                        {state.processing.withMacros}
+                      </pre>
+                    </div>
+
+                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                      <h5 className="font-bold text-green-800 mb-2">💬 AFTER CONVERSATIONAL</h5>
+                      <pre className="text-sm text-green-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
+                        {state.processing.conversational}
+                      </pre>
+                    </div>
+
+                    <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                      <h5 className="font-bold text-purple-800 mb-2">🎭 AFTER WST2 RULES</h5>
+                      <pre className="text-sm text-purple-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
+                        {state.processing.wst2Formatted}
+                      </pre>
+                    </div>
+
+                    <div className="p-4 bg-orange-50 border-2 border-orange-400 rounded-lg">
+                      <h5 className="font-bold text-orange-800 mb-2">🎯 FINAL OUTPUT (Sent to ElevenLabs)</h5>
+                      <pre className="text-sm text-orange-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
+                        {state.processing.finalOutput}
+                      </pre>
                     </div>
                   </div>
                 </div>

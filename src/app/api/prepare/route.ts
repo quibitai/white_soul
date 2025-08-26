@@ -42,6 +42,18 @@ interface PrepareResponse {
     estSeconds: number;
   }>;
   report: LintReport;
+  processing?: {
+    originalText: string;
+    normalized: string;
+    withMacros: string;
+    conversational: string;
+    wst2Formatted: string;
+    finalOutput: string;
+    pipeline: Array<{
+      step: string;
+      description: string;
+    }>;
+  };
 }
 
 /**
@@ -89,7 +101,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       originalText: text,
     });
 
-    // Prepare response
+    // Prepare response with processing annotations
     const response: PrepareResponse = {
       manifestId,
       chunks: processedChunks.map(chunk => ({
@@ -98,6 +110,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         estSeconds: chunk.estSeconds,
       })),
       report,
+      processing: {
+        originalText: text,
+        normalized: normalized,
+        withMacros: withMacros,
+        conversational: conversational,
+        wst2Formatted: wst2Formatted,
+        finalOutput: processedChunks.map(chunk => chunk.body).join('\n\n'),
+        pipeline: [
+          { step: 'normalize', description: 'Text normalization and cleanup' },
+          { step: 'lint', description: 'Style analysis and warnings' },
+          { step: 'macros', description: 'Pause and emphasis macro insertion' },
+          { step: 'conversational', description: 'Conversational realism enhancements' },
+          { step: 'wst2', description: 'WST2 Studio Speech Rules formatting' },
+          { step: 'chunk', description: 'Text segmentation for TTS' },
+          { step: 'ssml', description: output === 'ssml' ? 'SSML conversion applied' : 'Text output (no SSML conversion)' },
+        ],
+      },
     };
 
     return NextResponse.json(response);
