@@ -1,0 +1,57 @@
+voice:
+  voice_id: "ELEVEN_VOICE_ID"
+  model_id: "eleven_multilingual_v2"
+  settings:
+    stability: 0.35
+    similarity_boost: 0.80
+    style: 0.20
+    speaker_boost: true
+  seed: 123456            # optional determinism
+
+pacing:
+  wpm: 145
+  pauses:
+    micro: 120            # ms
+    short: 250
+    med:   400
+    long:  900
+    break: 2000           # cap long silences ~2.2s
+  reflective_rate_delta_pct: -2
+
+tone:
+  allow: ["kinda","literally","ugh","you know","I mean","so yeah","still","weird"]
+  ban:
+    - "nervous system"
+    - "somatic"
+    - "inner child"
+    - "self-surveillance"
+    - "I invite you to"
+    - "deep breath in"
+    - "don't react"
+  patterns:
+    - pattern: "^No\\.$"
+      suggest: "Nope."        # 'No.' can be read as 'Number'
+    - pattern: "\\.\\.\\.\\s*(you guys|you all)"
+      suggest: ", $1"         # ellipsis before 'you guys' causes odd stress
+
+group_address:
+  min_ratio: 0.30
+  max_ratio: 0.50
+  max_consecutive: 2
+
+emphasis:
+  use_ssml: false            # set true only if your model handles SSML well
+  caps_max_per_clause: 1
+  caps_max_per_sentence: 2
+
+chunking:
+  target_seconds: 25
+  max_chars: 1800
+  guardrails:
+    start_with_micro_pause: true
+    end_with_short_pause: true
+
+punctuation:
+  avoid_trailing_em_dash: true
+  avoid_ellipsis_line_start: true
+  drop_final_period_when_pause_follows: true  # to avoid end-of-line lift
