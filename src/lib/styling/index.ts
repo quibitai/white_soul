@@ -30,3 +30,11 @@ export { sanitizeForTTS, analyzeTTSArtifacts } from './sanitizer';
 
 // Audio Tags & Emotional Delivery
 export { applyAudioTags, analyzeAudioTagOpportunities, validateAudioTags } from './audio-tags';
+
+// Natural Processing for ElevenLabs v3
+export { 
+  processForNaturalTTS, 
+  convertPausesToNatural, 
+  validateNaturalText,
+  type NaturalProcessingResult 
+} from './natural-processor';

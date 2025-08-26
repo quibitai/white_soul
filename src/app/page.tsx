@@ -49,6 +49,7 @@ export default function Home() {
   const [state, setState] = useState<ProcessingState>({ status: 'idle' });
   const [showReport, setShowReport] = useState(false);
   const [showProcessing, setShowProcessing] = useState(false);
+  const [processingMode, setProcessingMode] = useState<'traditional' | 'natural'>('natural');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -99,6 +100,7 @@ export default function Home() {
           text,
           output: 'ssml',
           preset: 'angela',
+          processingMode,
         }),
       });
 
@@ -477,6 +479,45 @@ export default function Home() {
               )}
             </div>
           )}
+
+          {/* Processing Mode Toggle */}
+          <div className="mb-6 p-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl">
+            <h3 className="text-lg font-semibold text-purple-800 mb-3">🎛️ Processing Mode</h3>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="processingMode"
+                  value="natural"
+                  checked={processingMode === 'natural'}
+                  onChange={(e) => setProcessingMode(e.target.value as 'natural')}
+                  className="w-4 h-4 text-purple-600"
+                />
+                <span className="text-purple-800 font-medium">
+                  🌿 Natural (Recommended for v3)
+                </span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="radio"
+                  name="processingMode"
+                  value="traditional"
+                  checked={processingMode === 'traditional'}
+                  onChange={(e) => setProcessingMode(e.target.value as 'traditional')}
+                  className="w-4 h-4 text-purple-600"
+                />
+                <span className="text-purple-800 font-medium">
+                  ⚙️ Traditional (SSML)
+                </span>
+              </label>
+            </div>
+            <p className="text-sm text-purple-600 mt-2">
+              {processingMode === 'natural' 
+                ? '✨ Uses natural punctuation and ElevenLabs v3 audio tags for emotional delivery'
+                : '🔧 Uses traditional SSML markup and complex processing pipeline'
+              }
+            </p>
+          </div>
 
           {/* Action Buttons */}
           <div className="flex gap-6 mb-8">

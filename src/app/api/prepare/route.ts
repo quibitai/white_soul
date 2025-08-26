@@ -15,10 +15,15 @@ import {
   applyWST2Rules,
   sanitizeForTTS,
   applyAudioTags, // NEW: Audio tags for emotional delivery
+  processForNaturalTTS, // NEW: Natural processing for v3
+  convertPausesToNatural, // NEW: Convert pauses to natural punctuation
+  validateNaturalText, // NEW: Validate natural text
   toSSML,
   chunk,
   type TextChunk,
   type LintReport,
+  type NaturalProcessingResult,
+  type VoiceConfig,
 } from '@/lib/styling';
 import { saveManifest } from '@/lib/store';
 
@@ -29,6 +34,7 @@ const PrepareRequestSchema = z.object({
   text: z.string().min(1, 'Text is required'),
   output: z.enum(['ssml', 'text']).default('ssml'),
   preset: z.string().default('angela'),
+  processingMode: z.enum(['traditional', 'natural']).optional().default('traditional'),
 });
 
 
@@ -68,7 +74,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     // Parse and validate request body
     const body = await req.json();
-    const { text, output } = PrepareRequestSchema.parse(body);
+    const { text, output, processingMode } = PrepareRequestSchema.parse(body);
 
     // Check input length limits
     const maxChars = parseInt(process.env.MAX_INPUT_CHARS || '20000');
@@ -82,7 +88,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Load voice configuration
     const config = await loadConfig();
 
-    // Process text through styling pipeline
+    // Choose processing approach based on mode
+    if (processingMode === 'natural') {
+      return await processNaturalMode(text, config, output);
+    }
+
+    // Traditional processing pipeline
     const normalized = normalize(text, config);
     const report = lint(normalized, config);
     const withMacros = applyMacros(normalized, config);
@@ -230,4 +241,81 @@ export async function GET(): Promise<NextResponse> {
   };
 
   return NextResponse.json(documentation);
+}
+
+/**
+ * Natural processing mode for ElevenLabs v3
+ * Simplified pipeline focused on natural text and audio tags
+ */
+async function processNaturalMode(text: string, config: VoiceConfig, _output: string) {
+  try {
+    // Step 1: Convert any existing pause markup to natural punctuation
+    const naturalText = convertPausesToNatural(text);
+    
+    // Step 2: Process for natural TTS with audio tags
+    const naturalResult = processForNaturalTTS(naturalText, config);
+    
+    // Step 3: Validate the result
+    const validation = validateNaturalText(naturalResult.text);
+    
+    // Step 4: Create simple chunks (no complex chunking needed for natural approach)
+    const chunks = createNaturalChunks(naturalResult.text);
+    
+    // Step 5: Generate manifest
+    const manifestId = await saveManifest(chunks, {
+      report: { 
+        warnings: validation.issues, 
+        bans: [],
+        stats: {
+          words: naturalResult.text.split(/\s+/).length,
+          sentences: naturalResult.text.split(/[.!?]+/).length - 1,
+          groupAddressRatio: 0, // Not applicable for natural processing
+          consecutiveGroupAddress: 0 // Not applicable for natural processing
+        }
+      },
+      configVersion: 'natural-v1',
+      originalText: text,
+    });
+
+    return NextResponse.json({
+      manifestId,
+      chunks,
+      report: {
+        warnings: validation.issues,
+        bans: []
+      },
+      processing: {
+        originalText: text,
+        naturalConverted: naturalText,
+        withAudioTags: naturalResult.text,
+        finalOutput: naturalResult.text,
+        audioTags: naturalResult.audioTags,
+        naturalPauses: naturalResult.naturalPauses,
+        pipeline: [
+          { step: 'pause_conversion', description: 'Convert pause markup to natural punctuation' },
+          { step: 'natural_processing', description: 'Apply natural TTS processing with audio tags' },
+          { step: 'validation', description: 'Validate natural text format' },
+        ]
+      }
+    });
+
+  } catch (error) {
+    console.error('Natural processing error:', error);
+    return NextResponse.json({ error: 'Failed to process text naturally' }, { status: 500 });
+  }
+}
+
+/**
+ * Create simple chunks for natural processing
+ */
+function createNaturalChunks(text: string) {
+  // Split by paragraph breaks, keeping natural flow
+  const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
+  
+  return paragraphs.map((paragraph, index) => ({
+    id: index,
+    body: paragraph.trim(),
+    charCount: paragraph.trim().length,
+    estSeconds: Math.max(3, Math.ceil(paragraph.length / 15)) // Rough estimate: 15 chars per second
+  }));
 }
