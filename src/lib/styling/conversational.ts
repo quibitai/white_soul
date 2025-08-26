@@ -201,10 +201,11 @@ function combineSentences(text: string, config: VoiceConfig): string {
 }
 
 /**
- * Applies mystical vocabulary replacements
+ * Applies grounded vocabulary replacements (inverted mystical terms)
+ * Replaces overly mystical language with more accessible terms
  * @param {string} text - Input text
  * @param {VoiceConfig} config - Voice configuration
- * @returns {string} Text with mystical vocabulary
+ * @returns {string} Text with grounded vocabulary
  */
 function applyMysticalVocabulary(text: string, config: VoiceConfig): string {
   if (!config.conversational_realism.mystical_vocabulary) return text;
