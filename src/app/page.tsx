@@ -93,6 +93,9 @@ export default function Home() {
     processing?: ProcessingState['processing'] 
   } | null> => {
     try {
+      console.log('🚀 Starting text preparation with mode:', processingMode);
+      console.log('📝 Input text preview:', text.substring(0, 100) + '...');
+      
       const response = await fetch('/api/prepare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -110,6 +113,13 @@ export default function Home() {
       }
 
       const data = await response.json();
+      console.log('✅ Text preparation complete:', {
+        manifestId: data.manifestId,
+        processingMode: data.processing?.mode,
+        hasAudioTags: data.processing?.finalText?.includes('[') || false,
+        finalTextPreview: data.processing?.finalText?.substring(0, 150) + '...'
+      });
+      
       return { 
         manifestId: data.manifestId, 
         report: data.report,
@@ -126,6 +136,8 @@ export default function Home() {
    */
   const synthesizeAudio = async (manifestId: string) => {
     try {
+      console.log('🎵 Starting audio synthesis for manifest:', manifestId);
+      
       const response = await fetch('/api/synthesize', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
