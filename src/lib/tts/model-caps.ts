@@ -80,6 +80,24 @@ export const MODEL_CAPS: Record<string, ModelCapabilities> = {
       speaker_boost: true,
     },
   },
+  'eleven_v3': {
+    id: 'eleven_v3',
+    name: 'Eleven V3 (Alpha)',
+    supportsSSML: true,
+    supportsProsody: false, // Use audio tags instead
+    supportsBreaks: true,
+    maxBreakTime: 2200,
+    supportsEmphasis: false, // Use audio tags instead
+    supportsPronunciationDictionaries: true,
+    maxDictionaries: 3,
+    supportsWebSocket: false, // v3 is not for real-time applications
+    recommendedSettings: {
+      stability: 0.5,
+      similarity_boost: 0.8,
+      style: 0.0, // v3 uses different stability modes
+      speaker_boost: true,
+    },
+  },
 };
 
 /**

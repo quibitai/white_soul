@@ -99,8 +99,13 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   //   requestBody.pronunciation_dictionary_locators = pronunciationData;
   // }
 
-  // Add SSML parsing flag for WebSocket streaming
+  // Add SSML parsing flag for WebSocket streaming or v3 model
   if (enableSSMLParsing && modelCaps.supportsWebSocket) {
+    requestBody.enable_ssml_parsing = true;
+  }
+  
+  // Enable SSML parsing for v3 model to support audio tags
+  if (modelId === 'eleven_v3') {
     requestBody.enable_ssml_parsing = true;
   }
 

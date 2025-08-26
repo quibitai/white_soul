@@ -1,6 +1,6 @@
 voice:
   voice_id: "ELEVEN_VOICE_ID"
-  model_id: "eleven_multilingual_v2"
+  model_id: "eleven_v3"  # Changed to v3 for audio tags support
   settings:
     stability: 0.5          # Optimized from 0.35 to ElevenLabs recommended 0.5
     similarity_boost: 0.80  # Keep current - good value
@@ -90,7 +90,7 @@ websocket:
 model_selection:
   proof: "eleven_flash_v2_5"      # Low latency for quick previews
   streaming: "eleven_turbo_v2_5"   # Balanced for real-time
-  full: "eleven_multilingual_v2"   # High quality for final output
+  full: "eleven_v3"               # v3 model for audio tags and emotional delivery
   
 # Sound effects generation settings
 sound_effects:
@@ -109,8 +109,8 @@ conversational_realism:
 audio_tags:
   enable_emotional_tags: true    # Enable ElevenLabs audio tags for emotional delivery
   enable_sound_effects: true     # Enable sound effect tags
-  tag_probability: 0.8           # 80% chance to add emotional tags (increased for testing)
-  sound_effect_probability: 0.5  # 50% chance to add ambient sound effects (increased for testing)
+  tag_probability: 0.6           # 60% chance to add emotional tags (for testing v3)
+  sound_effect_probability: 0.3  # 30% chance to add ambient sound effects (for testing v3)
   max_effects_per_chunk: 1       # Limit sound effects to avoid overwhelming
   
   # ElevenLabs v3 compatible audio tags
