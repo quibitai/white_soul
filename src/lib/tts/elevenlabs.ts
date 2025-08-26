@@ -5,7 +5,7 @@
 
 import { VoiceConfig } from '../styling/config';
 import { sanitizeForModel, getModelCapabilities, getRecommendedSettings } from './model-caps';
-import { selectDictionaries, toElevenLabsFormat } from './pronunciation';
+// import { selectDictionaries, toElevenLabsFormat } from './pronunciation'; // Temporarily disabled
 
 export interface TTSOptions {
   text: string;
@@ -38,7 +38,7 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
     seed, 
     previousText, 
     nextText, 
-    pronunciationDictionaries = [],
+    pronunciationDictionaries = [], // Temporarily unused
     enableSSMLParsing = false 
   } = options;
 

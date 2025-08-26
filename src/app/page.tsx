@@ -305,42 +305,57 @@ export default function Home() {
               </button>
               
               {showReport && (
-                <div className="mt-6 p-6 bg-gradient-to-r from-yellow-50 to-orange-50 border-2 border-yellow-200 rounded-2xl">
+                <div className="mt-6 p-6 bg-white/90 backdrop-blur-sm border-2 border-purple-300 rounded-2xl shadow-lg">
                   {state.report!.bans.length > 0 && (
-                    <div className="mb-3">
-                      <h4 className="font-semibold text-red-800 dark:text-red-200 mb-2">Banned Phrases:</h4>
-                      <ul className="list-disc list-inside text-sm text-red-700 dark:text-red-300">
-                        {state.report!.bans.map((ban, i) => (
-                          <li key={i}>{ban}</li>
-                        ))}
-                      </ul>
+                    <div className="mb-6">
+                      <h4 className="text-xl font-bold text-red-700 mb-3">⚠️ BANNED PHRASES DETECTED</h4>
+                      <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+                        <ul className="space-y-2">
+                          {state.report!.bans.map((ban, i) => (
+                            <li key={i} className="text-red-800 font-medium text-base flex items-center gap-2">
+                              <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                              {ban}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   )}
                   
                   {state.report!.warnings.length > 0 && (
-                    <div>
-                      <h4 className="font-semibold text-yellow-800 dark:text-yellow-200 mb-2">Warnings:</h4>
-                      <ul className="list-disc list-inside text-sm text-yellow-700 dark:text-yellow-300">
-                        {state.report!.warnings.map((warning, i) => (
-                          <li key={i}>{warning}</li>
-                        ))}
-                      </ul>
+                    <div className="mb-6">
+                      <h4 className="text-xl font-bold text-amber-700 mb-3">💫 STYLE INSIGHTS</h4>
+                      <div className="bg-amber-50 border-l-4 border-amber-500 p-4 rounded-r-lg">
+                        <ul className="space-y-2">
+                          {state.report!.warnings.map((warning, i) => (
+                            <li key={i} className="text-amber-800 font-medium text-base flex items-center gap-2">
+                              <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                              {warning}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
                     </div>
                   )}
                   
-                  <div className="mt-3 pt-3 border-t border-yellow-200 dark:border-yellow-700">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="font-medium">Words:</span> {state.report!.stats.words}
+                  <div className="pt-4 border-t-2 border-purple-200">
+                    <h5 className="text-lg font-bold text-purple-700 mb-4">📊 TRANSMISSION METRICS</h5>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="bg-purple-50 p-3 rounded-lg">
+                        <span className="text-purple-600 font-semibold text-sm block">WORDS</span>
+                        <span className="text-purple-900 font-bold text-xl">{state.report!.stats.words}</span>
                       </div>
-                      <div>
-                        <span className="font-medium">Sentences:</span> {state.report!.stats.sentences}
+                      <div className="bg-purple-50 p-3 rounded-lg">
+                        <span className="text-purple-600 font-semibold text-sm block">SENTENCES</span>
+                        <span className="text-purple-900 font-bold text-xl">{state.report!.stats.sentences}</span>
                       </div>
-                      <div>
-                        <span className="font-medium">Group Address:</span> {(state.report!.stats.groupAddressRatio * 100).toFixed(1)}%
+                      <div className="bg-purple-50 p-3 rounded-lg">
+                        <span className="text-purple-600 font-semibold text-sm block">GROUP ADDRESS</span>
+                        <span className="text-purple-900 font-bold text-xl">{(state.report!.stats.groupAddressRatio * 100).toFixed(1)}%</span>
                       </div>
-                      <div>
-                        <span className="font-medium">Consecutive:</span> {state.report!.stats.consecutiveGroupAddress}
+                      <div className="bg-purple-50 p-3 rounded-lg">
+                        <span className="text-purple-600 font-semibold text-sm block">CONSECUTIVE</span>
+                        <span className="text-purple-900 font-bold text-xl">{state.report!.stats.consecutiveGroupAddress}</span>
                       </div>
                     </div>
                   </div>
