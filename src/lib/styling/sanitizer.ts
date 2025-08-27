@@ -97,26 +97,17 @@ function removeModelIncompatibleTags(text: string, config: VoiceConfig): string 
   if (isV3Model) {
     console.log('🎯 v3 Model detected: removing v2 pause tags and converting to natural flow');
     
-    // Remove v2-style pause tags and convert to natural punctuation
-    cleaned = cleaned.replace(/<pause,(\d+)>/g, (match, ms) => {
-      const duration = parseInt(ms);
-      if (duration <= 300) return ',';        // Short pause = comma
-      if (duration <= 800) return '...';      // Medium pause = ellipses  
-      if (duration <= 2000) return '. ';      // Long pause = period + space
-      return '.\n\n';                         // Very long pause = paragraph break
-    });
+    // Step 1: Remove v2-style pause tags entirely (v3 handles pacing naturally)
+    cleaned = cleaned.replace(/<pause,\d+>/g, '');
     
-    // Remove SSML breaks and convert to natural punctuation
-    cleaned = cleaned.replace(/<break\s+time="([0-9.]+)s?"\s*\/>/g, (match, seconds) => {
-      const duration = parseFloat(seconds) * 1000;
-      if (duration <= 500) return ',';
-      if (duration <= 1000) return '...';
-      if (duration <= 2000) return '. ';
-      return '.\n\n';
-    });
+    // Step 2: Remove SSML breaks entirely (v3 handles pacing naturally) 
+    cleaned = cleaned.replace(/<break\s+time="[0-9.]+s?"\s*\/>/g, '');
     
-    // Remove any remaining XML-style tags that v3 doesn't support
+    // Step 3: Remove any remaining XML-style tags that v3 doesn't support
     cleaned = cleaned.replace(/<(?!\/?(pause|break))[^>]*>/g, '');
+    
+    // Step 4: Clean up malformed punctuation created by tag removal
+    cleaned = cleanupMalformedPunctuation(cleaned);
     
     // Log audio tags that should be preserved
     const audioTags = cleaned.match(/\[[^\]]+\]/g) || [];
@@ -128,6 +119,42 @@ function removeModelIncompatibleTags(text: string, config: VoiceConfig): string 
     // For v2 models, could remove v3-specific audio tags if needed
     // Currently keeping them as they might work or be ignored
   }
+  
+  return cleaned;
+}
+
+/**
+ * Cleans up malformed punctuation patterns created by tag removal
+ */
+function cleanupMalformedPunctuation(text: string): string {
+  let cleaned = text;
+  
+  console.log('🧹 Cleaning malformed punctuation patterns');
+  
+  // Step 1: Remove duplicate consecutive punctuation
+  cleaned = cleaned.replace(/[,]{2,}/g, ',');        // Multiple commas → single comma
+  cleaned = cleaned.replace(/[.]{4,}/g, '...');      // 4+ periods → ellipses
+  cleaned = cleaned.replace(/[!]{2,}/g, '!');        // Multiple exclamation → single
+  cleaned = cleaned.replace(/[?]{2,}/g, '?');        // Multiple question → single
+  
+  // Step 2: Fix mixed punctuation clusters
+  cleaned = cleaned.replace(/,[.]/g, '.');           // comma-period → just period
+  cleaned = cleaned.replace(/[.],/g, '.');           // period-comma → just period  
+  cleaned = cleaned.replace(/,\s*[.]/g, '.');        // comma space period → period
+  cleaned = cleaned.replace(/[.]\s*,/g, '.');        // period space comma → period
+  
+  // Step 3: Normalize spacing around punctuation
+  cleaned = cleaned.replace(/\s+([,.!?])/g, '$1');   // Remove space before punctuation
+  cleaned = cleaned.replace(/([,.!?])(\w)/g, '$1 $2'); // Add space after punctuation before letters
+  cleaned = cleaned.replace(/([.!?])\s*([A-Z])/g, '$1 $2'); // Ensure space after sentence-ending punctuation
+  
+  // Step 4: Handle ellipses properly
+  cleaned = cleaned.replace(/[.]\s*[.]\s*[.]/g, '...'); // Separate periods → ellipses
+  cleaned = cleaned.replace(/[.]{3,}/g, '...');          // Normalize ellipses length
+  
+  // Step 5: Remove excessive whitespace created by cleanup
+  cleaned = cleaned.replace(/\s{3,}/g, '  ');        // Multiple spaces → double space (natural pause)
+  cleaned = cleaned.replace(/\s+$/gm, '');           // Remove trailing whitespace
   
   return cleaned;
 }

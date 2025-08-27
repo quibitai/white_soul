@@ -156,19 +156,20 @@ function isNaturalBreakPoint(currentSentence: string, nextSentence?: string, ind
     return true;
   }
   
-  // Break after transitional phrases that signal topic shifts
+  // Break after transitional phrases that signal topic shifts (tarot-specific)
   const topicTransitions = [
+    'now your second card',
+    'your next card', 
     'and here\'s the thing',
     'but here\'s what',
     'now here\'s where',
     'here\'s the part',
-    'here\'s what\'s happening',
-    'so here we are',
+    'here\'s what\'s happening', 
     'and this is where',
     'but this is the moment',
-    'this is when',
-    'and suddenly',
-    'but then'
+    'so august',
+    'in mid-august',
+    'and that feeling'
   ];
   
   for (const transition of topicTransitions) {
@@ -188,13 +189,14 @@ function isNaturalBreakPoint(currentSentence: string, nextSentence?: string, ind
     return true;
   }
   
-  // Don't break short related sentences (under 50 chars each)
-  if (currentSentence.length < 50 && nextSentence && nextSentence.length < 50) {
+  // Don't break short related sentences (under 100 chars each)
+  if (currentSentence.length < 100 && nextSentence && nextSentence.length < 100) {
     return false;
   }
   
-  // Default: group 2-3 sentences together for natural flow
-  return Math.random() < 0.3; // 30% chance for variety
+  // Very conservative breaking - only for clear topic shifts
+  // Default: keep sentences together for larger, more natural chunks
+  return false; // Removed randomness - rely only on explicit transition detection
 }
 
 /**
