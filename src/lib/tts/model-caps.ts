@@ -96,7 +96,7 @@ export const MODEL_CAPS: Record<string, ModelCapabilities> = {
     supportsAudioTags: true, // v3's key feature for emotional delivery
     supportsStabilityModes: true, // Creative, Natural, Robust modes
     recommendedSettings: {
-      stability: 0.3, // Creative mode for maximum expressiveness
+      stability: 0.0, // Creative mode (0.0) for maximum emotional expressiveness
       similarity_boost: 0.85, // Higher for better voice consistency
       style: 0.0, // Not used in v3, stability controls behavior
       speaker_boost: true,
@@ -247,15 +247,15 @@ export function supportsAudioTags(modelId: string): boolean {
 }
 
 /**
- * Gets v3 stability mode recommendations
+ * Gets v3 stability mode recommendations - v3 API only accepts discrete values
  * @param {'creative' | 'natural' | 'robust'} mode - Stability mode
- * @returns {number} Recommended stability value
+ * @returns {number} ElevenLabs v3 discrete stability value
  */
 export function getV3StabilityValue(mode: 'creative' | 'natural' | 'robust'): number {
   const stabilityModes = {
-    creative: 0.3,  // More emotional and expressive, prone to hallucinations
-    natural: 0.5,   // Closest to original voice recording, balanced
-    robust: 0.8,    // Highly stable, less responsive to directional prompts
+    creative: 0.0,  // Creative mode - maximum emotional expressiveness
+    natural: 0.5,   // Natural mode - balanced expressiveness and consistency  
+    robust: 1.0,    // Robust mode - maximum stability and consistency
   };
   return stabilityModes[mode];
 }
@@ -297,19 +297,17 @@ export function validateV3Configuration(
     };
   }
 
-  // Validate stability setting for v3
+  // Validate stability setting for v3 - must be discrete values
   const stability = voiceSettings.stability as number;
   if (stability !== undefined) {
-    if (stability > 0.8) {
-      warnings.push('High stability (>0.8) may reduce emotional expressiveness in v3');
-      recommendations.push('Consider stability 0.3-0.5 for better emotional range');
-      optimizations.stability_recommendation = 'creative'; // 0.3
-    } else if (stability < 0.1) {
-      warnings.push('Very low stability (<0.1) may cause inconsistent voice quality');
-      recommendations.push('Consider stability 0.3+ for voice consistency');
-      optimizations.stability_recommendation = 'natural'; // 0.5
+    const validValues = [0.0, 0.5, 1.0];
+    if (!validValues.includes(stability)) {
+      warnings.push(`Invalid v3 stability value: ${stability}. Must be one of: 0.0, 0.5, 1.0`);
+      recommendations.push('Use discrete values: 0.0 (Creative), 0.5 (Natural), 1.0 (Robust)');
+      optimizations.stability = 0.0; // Default to Creative mode
     } else {
-      recommendations.push(`Current stability ${stability} is well-optimized for v3`);
+      const modeNames = { 0.0: 'Creative', 0.5: 'Natural', 1.0: 'Robust' };
+      recommendations.push(`Stability ${stability} (${modeNames[stability]} mode) is valid for v3`);
     }
   }
 
@@ -347,25 +345,25 @@ export function getV3OptimalSettings(useCase: 'emotional' | 'stable' | 'balanced
 } {
   const settingsMap = {
     emotional: {
-      stability: 0.3, // Creative mode
+      stability: 0.0, // Creative mode - ElevenLabs v3 discrete value
       similarity_boost: 0.85,
       style: 0.0,
       speaker_boost: true,
-      mode_description: 'Creative mode - maximum emotional expressiveness'
+      mode_description: 'Creative mode (0.0) - maximum emotional expressiveness'
     },
     balanced: {
-      stability: 0.5, // Natural mode
+      stability: 0.5, // Natural mode - ElevenLabs v3 discrete value
       similarity_boost: 0.85,
       style: 0.0,
       speaker_boost: true,
-      mode_description: 'Natural mode - balanced expressiveness and consistency'
+      mode_description: 'Natural mode (0.5) - balanced expressiveness and consistency'
     },
     stable: {
-      stability: 0.8, // Robust mode
+      stability: 1.0, // Robust mode - ElevenLabs v3 discrete value
       similarity_boost: 0.9,
       style: 0.0,
       speaker_boost: true,
-      mode_description: 'Robust mode - maximum consistency and stability'
+      mode_description: 'Robust mode (1.0) - maximum consistency and stability'
     }
   };
 

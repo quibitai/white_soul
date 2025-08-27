@@ -2,7 +2,7 @@ voice:
   voice_id: "ELEVEN_VOICE_ID"
   model_id: "eleven_v3"  # v3 for advanced emotional delivery and audio tags
   settings:
-    stability: 0.3          # Creative mode for maximum emotional expressiveness
+    stability: 0.0          # Creative mode (0.0) for maximum emotional expressiveness
     similarity_boost: 0.85  # Higher for better voice consistency in v3
     style: 0.0             # Not used in v3 - stability controls behavior instead
     speaker_boost: true     # Enhances clarity and presence
