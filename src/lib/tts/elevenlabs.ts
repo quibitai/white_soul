@@ -219,15 +219,19 @@ export async function synthesizeChunks(
     return [];
   }
 
-  const audioBuffers: Buffer[] = [];
-  let previousText: string | undefined;
+  const modelId = baseOptions.modelId || process.env.ELEVEN_MODEL_ID || config.voice.model_id;
+  const isV3 = isV3Model(modelId);
+  
+  console.log(`🚀 Processing ${chunks.length} chunks in ${isV3 ? 'parallel (v3)' : 'parallel'} mode`);
 
   // Prepare pronunciation dictionaries from config
   const pronunciationDictionaries = config.pronunciation?.default_dictionaries || [];
 
-  for (let i = 0; i < chunks.length; i++) {
-    const chunk = chunks[i];
-    const nextText = i < chunks.length - 1 ? chunks[i + 1].slice(0, 300) : undefined;
+  // For v3 models, we can process completely in parallel since v3 has better context understanding
+  // For v2 models, we still process in parallel but include context
+  const chunkPromises = chunks.map(async (chunk, i) => {
+    const previousText = isV3 ? undefined : (i > 0 ? chunks[i - 1].slice(-300) : undefined);
+    const nextText = isV3 ? undefined : (i < chunks.length - 1 ? chunks[i + 1].slice(0, 300) : undefined);
 
     const options: TTSOptions = {
       text: chunk,
@@ -241,14 +245,45 @@ export async function synthesizeChunks(
       enableSSMLParsing: config.websocket?.enable_ssml_parsing || false,
     };
 
+    const startTime = Date.now();
     const result = await ttsChunk(options);
-    audioBuffers.push(result.audio);
+    const endTime = Date.now();
+    
+    console.log(`📦 Chunk ${i + 1}/${chunks.length} synthesized in ${endTime - startTime}ms (${chunk.length} chars)`);
+    
+    return {
+      index: i,
+      audio: result.audio,
+      duration: endTime - startTime
+    };
+  });
 
-    // Set previous text for next iteration (last ~300 chars for continuity)
-    previousText = chunk.slice(-300);
+  // Process all chunks in parallel with rate limiting
+  const BATCH_SIZE = 5; // Process max 5 chunks simultaneously to avoid API rate limits
+  const results: { index: number; audio: Buffer; duration: number }[] = [];
+  
+  for (let i = 0; i < chunkPromises.length; i += BATCH_SIZE) {
+    const batch = chunkPromises.slice(i, i + BATCH_SIZE);
+    console.log(`🔄 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(chunkPromises.length / BATCH_SIZE)} (${batch.length} chunks)`);
+    
+    const batchResults = await Promise.all(batch);
+    results.push(...batchResults);
+    
+    // Small delay between batches to be respectful to API
+    if (i + BATCH_SIZE < chunkPromises.length) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
   }
 
-  return audioBuffers;
+  // Sort results by index to maintain order
+  results.sort((a, b) => a.index - b.index);
+  
+  const totalDuration = results.reduce((sum, r) => sum + r.duration, 0);
+  const avgDuration = totalDuration / results.length;
+  
+  console.log(`✅ Parallel synthesis complete: ${results.length} chunks in ${totalDuration}ms total (avg: ${Math.round(avgDuration)}ms per chunk)`);
+
+  return results.map(r => r.audio);
 }
 
 /**

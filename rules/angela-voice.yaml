@@ -123,7 +123,9 @@ audio_tags:
     breaths: ["[sighs]", "[exhales]"]                 # Natural vocal breaks
     curiosity: ["[curious]", "[intrigued]"]           # Perfect for card exploration
     excitement: ["[excited]", "[amazed]"]             # Energy surges in readings
-    mystery: ["[mysterious]", "[knowing]"]            # Angela's mystical presence
+    mystery: ["[mysterious]", "[mystical]"]           # Angela's mystical presence  
+    knowing: ["[knowing]", "[confident]"]             # Deep inner wisdom, trust
+    concern: ["[concerned]", "[thoughtful]"]          # Gentle worry, empathetic care
     emphasis: ["[emphasizes]"]                        # For key insights
     
   # v3-compatible sound effects (minimal, strategic use)
@@ -132,10 +134,12 @@ audio_tags:
   
   # Simplified context-aware triggers for natural placement
   placement_triggers:
-    whispers: ["secret", "hidden", "quietly", "intimate", "hermit", "solitude"]
-    curiosity: ["wonder", "curious", "explore", "discover", "card", "insight"] 
-    excitement: ["amazing", "incredible", "powerful", "energy", "transformation"]
-    mystery: ["mysterious", "reveal", "unveil", "tarot", "divine", "spiritual"]
+    whispers: ["secret", "hidden", "quietly", "intimate", "hermit", "solitude", "whisper", "personal", "private"]
+    curiosity: ["wonder", "curious", "explore", "discover", "card", "insight", "clarity", "vision", "see", "truth", "know", "understand", "realize", "clear", "sight", "awareness", "perception"]
+    excitement: ["amazing", "incredible", "powerful", "energy", "transformation", "freedom", "liberation", "breakthrough", "shift", "change", "unleashed", "release", "boundaries", "limits", "break free"]
+    mystery: ["mysterious", "reveal", "unveil", "tarot", "divine", "spiritual", "high priestess", "priestess", "mystic", "ancient", "sacred", "intuition", "inner knowing", "cosmic", "universal", "wisdom", "arcana", "cards", "reading", "oracle", "veil", "behind", "beneath"]
+    knowing: ["trust", "instinct", "gut feeling", "inner voice", "already know", "deep down", "soul", "heart", "intuitive", "feel", "sense", "just know", "obvious", "truth", "authentic", "real", "genuine"]
+    concern: ["heavy", "weight", "burden", "carrying", "load", "pressure", "stress", "overwhelmed", "too much", "difficult", "struggle", "tired", "exhausted", "worn down"]
 
 speech_patterns:
   hesitation_cues:

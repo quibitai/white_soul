@@ -26,42 +26,61 @@ export function chunk(processedText: string, config: VoiceConfig): TextChunk[] {
     return [];
   }
 
+  console.log('✂️ Chunking with config:', {
+    target_seconds: config.chunking.target_seconds,
+    max_chars: config.chunking.max_chars,
+    min_chars: config.chunking.min_chars
+  });
+
   const chunks: TextChunk[] = [];
-  const sentences = segmentSentences(processedText);
   
-  if (sentences.length === 0) {
+  // NEW: Use paragraph-based chunking for more natural segments
+  const naturalSegments = segmentNaturally(processedText);
+  console.log(`📝 Created ${naturalSegments.length} natural segments (avg: ${Math.round(naturalSegments.reduce((sum, s) => sum + s.length, 0) / naturalSegments.length)} chars each)`);
+  
+  if (naturalSegments.length === 0) {
     return [];
   }
 
   let currentChunk = '';
   let chunkId = 0;
 
-  for (let i = 0; i < sentences.length; i++) {
-    const sentence = sentences[i];
-    const testChunk = currentChunk + (currentChunk ? ' ' : '') + sentence;
+  for (let i = 0; i < naturalSegments.length; i++) {
+    const segment = naturalSegments[i];
+    const testChunk = currentChunk + (currentChunk ? '\n\n' : '') + segment;
     
     const testDuration = estimateDuration(testChunk, config);
     const testCharCount = config.emphasis.use_ssml ? 
       getSSMLContentLength(testChunk) : 
       testChunk.replace(/<[^>]+>/g, '').length;
 
-    // Check if adding this sentence would exceed limits
+    // Check if adding this segment would exceed limits
     const exceedsTime = testDuration > config.chunking.target_seconds;
     const exceedsChars = testCharCount > config.chunking.max_chars;
     
-    if ((exceedsTime || exceedsChars) && currentChunk) {
+    // Only create chunk if we exceed limits AND current chunk meets minimum
+    const meetsMinimum = !config.chunking.min_chars || 
+      (config.emphasis.use_ssml ? 
+        getSSMLContentLength(currentChunk) : 
+        currentChunk.replace(/<[^>]+>/g, '').length) >= config.chunking.min_chars;
+    
+    if ((exceedsTime || exceedsChars) && currentChunk && meetsMinimum) {
       // Finalize current chunk
       const finalChunk = finalizeChunk(currentChunk, config);
+      const finalCharCount = config.emphasis.use_ssml ? 
+        getSSMLContentLength(finalChunk) : 
+        finalChunk.replace(/<[^>]+>/g, '').length;
+      
+      console.log(`📦 Chunk ${chunkId}: ${finalCharCount} chars, ~${estimateDuration(finalChunk, config)}s`);
+      
       chunks.push({
         id: chunkId++,
         body: finalChunk,
         estSeconds: estimateDuration(finalChunk, config),
-        charCount: config.emphasis.use_ssml ? 
-          getSSMLContentLength(finalChunk) : 
-          finalChunk.replace(/<[^>]+>/g, '').length,
+        charCount: finalCharCount,
       });
       
-      currentChunk = sentence;
+      currentChunk = segment;
     } else {
       currentChunk = testChunk;
     }
@@ -70,17 +89,112 @@ export function chunk(processedText: string, config: VoiceConfig): TextChunk[] {
   // Add the final chunk if there's remaining content
   if (currentChunk.trim()) {
     const finalChunk = finalizeChunk(currentChunk, config);
+    const finalCharCount = config.emphasis.use_ssml ? 
+      getSSMLContentLength(finalChunk) : 
+      finalChunk.replace(/<[^>]+>/g, '').length;
+    
+    console.log(`📦 Final chunk ${chunkId}: ${finalCharCount} chars, ~${estimateDuration(finalChunk, config)}s`);
+    
     chunks.push({
       id: chunkId,
       body: finalChunk,
       estSeconds: estimateDuration(finalChunk, config),
-      charCount: config.emphasis.use_ssml ? 
-        getSSMLContentLength(finalChunk) : 
-        finalChunk.replace(/<[^>]+>/g, '').length,
+      charCount: finalCharCount,
     });
   }
 
   return chunks;
+}
+
+/**
+ * Segments text into natural speaking segments (groups of related sentences)
+ * @param {string} text - Text to segment
+ * @returns {string[]} Array of natural speaking segments
+ */
+function segmentNaturally(text: string): string[] {
+  // First, get individual sentences
+  const sentences = segmentSentences(text);
+  
+  if (sentences.length === 0) return [];
+  
+  const naturalSegments: string[] = [];
+  let currentSegment: string[] = [];
+  
+  for (let i = 0; i < sentences.length; i++) {
+    const sentence = sentences[i].trim();
+    if (!sentence) continue;
+    
+    currentSegment.push(sentence);
+    
+    // Determine if this is a natural break point
+    const shouldBreak = isNaturalBreakPoint(sentence, sentences[i + 1], i, sentences.length);
+    
+    if (shouldBreak && currentSegment.length > 0) {
+      // Join sentences with natural spacing
+      naturalSegments.push(currentSegment.join(' '));
+      currentSegment = [];
+    }
+  }
+  
+  // Add any remaining sentences
+  if (currentSegment.length > 0) {
+    naturalSegments.push(currentSegment.join(' '));
+  }
+  
+  return naturalSegments.filter(segment => segment.trim().length > 0);
+}
+
+/**
+ * Determines if there should be a natural break after a sentence
+ */
+function isNaturalBreakPoint(currentSentence: string, nextSentence?: string, index?: number, totalSentences?: number): boolean {
+  const current = currentSentence.toLowerCase();
+  const next = nextSentence?.toLowerCase() || '';
+  
+  // Always break at paragraph boundaries
+  if (currentSentence.includes('\n') || nextSentence?.includes('\n')) {
+    return true;
+  }
+  
+  // Break after transitional phrases that signal topic shifts
+  const topicTransitions = [
+    'and here\'s the thing',
+    'but here\'s what',
+    'now here\'s where',
+    'here\'s the part',
+    'here\'s what\'s happening',
+    'so here we are',
+    'and this is where',
+    'but this is the moment',
+    'this is when',
+    'and suddenly',
+    'but then'
+  ];
+  
+  for (const transition of topicTransitions) {
+    if (current.includes(transition) || next.includes(transition)) {
+      return true;
+    }
+  }
+  
+  // Break after emphatic conclusions
+  if (current.endsWith('...') && 
+      (current.includes('that\'s') || current.includes('this is') || current.includes('you see'))) {
+    return true;
+  }
+  
+  // Break before direct address or questions
+  if (next.match(/^(and\s+)?(you|your|taurus|listen|here)/i)) {
+    return true;
+  }
+  
+  // Don't break short related sentences (under 50 chars each)
+  if (currentSentence.length < 50 && nextSentence && nextSentence.length < 50) {
+    return false;
+  }
+  
+  // Default: group 2-3 sentences together for natural flow
+  return Math.random() < 0.3; // 30% chance for variety
 }
 
 /**

@@ -113,6 +113,8 @@ const VoiceConfigSchema = z.object({
       curiosity: z.array(z.string()),
       excitement: z.array(z.string()),
       mystery: z.array(z.string()),
+      knowing: z.array(z.string()),
+      concern: z.array(z.string()),
       emphasis: z.array(z.string()),
     }),
     ambient_effects: z.object({
@@ -123,6 +125,8 @@ const VoiceConfigSchema = z.object({
       curiosity: z.array(z.string()),
       excitement: z.array(z.string()),
       mystery: z.array(z.string()),
+      knowing: z.array(z.string()),
+      concern: z.array(z.string()),
     }),
   }).optional(),
   conversational_realism: z.object({

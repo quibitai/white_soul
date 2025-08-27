@@ -91,11 +91,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       );
     }
 
-    // Select optimal model for full synthesis (high quality)
+    // Intelligent model selection based on content characteristics
     const finalVoiceId = voiceId || process.env.ELEVEN_VOICE_ID || config.voice.voice_id;
     const baseModelId = modelId || process.env.ELEVEN_MODEL_ID || config.voice.model_id;
-    const optimalModelId = selectOptimalModel('full', config, ['audio_tags', 'emotional_delivery']);
-    const finalModelId = modelId || optimalModelId; // Use provided model or optimal selection
+    
+    // Analyze content to determine optimal model
+    const contentStats = analyzeContentForModelSelection(textChunks, manifest);
+    const smartModelId = selectModelForContent(contentStats, config, baseModelId);
+    const finalModelId = modelId || smartModelId; // Use provided model or smart selection
     
     console.log('🎯 Model Selection Debug:', {
       providedModelId: modelId,
@@ -215,6 +218,82 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       { status: 500 }
     );
   }
+}
+
+/**
+ * Analyzes content characteristics to determine optimal model selection
+ */
+function analyzeContentForModelSelection(textChunks: { id: number; body: string; charCount: number; estSeconds: number }[], manifest: any) {
+  const totalChars = textChunks.reduce((sum, chunk) => sum + chunk.charCount, 0);
+  const totalEstSeconds = textChunks.reduce((sum, chunk) => sum + chunk.estSeconds, 0);
+  const avgChunkSize = totalChars / textChunks.length;
+  
+  // Count audio tags in content
+  const allText = textChunks.map(chunk => chunk.body).join(' ');
+  const audioTagMatches = allText.match(/\[[\w\s]+\]/g) || [];
+  const audioTagDensity = audioTagMatches.length / textChunks.length; // tags per chunk
+  
+  // Analyze content complexity
+  const hasComplexEmotions = audioTagMatches.some(tag => 
+    ['[mysterious]', '[mystical]', '[knowing]', '[curious]', '[intrigued]'].includes(tag)
+  );
+  
+  const isLongForm = totalEstSeconds > 180; // 3+ minutes
+  const hasHighTagDensity = audioTagDensity > 1.0; // More than 1 tag per chunk on average
+  
+  return {
+    totalChars,
+    totalEstSeconds,
+    chunkCount: textChunks.length,
+    avgChunkSize,
+    audioTagCount: audioTagMatches.length,
+    audioTagDensity,
+    hasComplexEmotions,
+    isLongForm,
+    hasHighTagDensity,
+    audioTags: audioTagMatches
+  };
+}
+
+/**
+ * Selects the best model based on content analysis
+ */
+function selectModelForContent(stats: any, config: VoiceConfig, fallbackModel: string) {
+  console.log('🎯 Content Analysis for Model Selection:', {
+    duration: `${Math.round(stats.totalEstSeconds / 60)}m ${Math.round(stats.totalEstSeconds % 60)}s`,
+    chunks: stats.chunkCount,
+    avgChunkSize: Math.round(stats.avgChunkSize),
+    audioTags: stats.audioTagCount,
+    tagDensity: Math.round(stats.audioTagDensity * 100) / 100,
+    isLongForm: stats.isLongForm,
+    hasComplexEmotions: stats.hasComplexEmotions
+  });
+
+  // If user has explicitly configured long_form model and this is long content, use it
+  if (stats.isLongForm && config.model_selection?.long_form) {
+    console.log(`🏃‍♂️ Using long-form model: ${config.model_selection.long_form} (content: ${Math.round(stats.totalEstSeconds / 60)}m)`);
+    return config.model_selection.long_form;
+  }
+  
+  // Smart model selection logic:
+  if (stats.isLongForm && stats.audioTagDensity < 0.5) {
+    // Long content with few audio tags - use turbo for speed and consistency
+    const turboModel = 'eleven_turbo_v2_5';
+    console.log(`🏃‍♂️ Long content with low tag density: using ${turboModel} for performance`);
+    return turboModel;
+  }
+  
+  if (!stats.isLongForm && (stats.hasComplexEmotions || stats.hasHighTagDensity)) {
+    // Short content with rich emotional expression - use v3 for quality
+    const v3Model = 'eleven_v3';
+    console.log(`🎭 Short content with rich emotions: using ${v3Model} for audio tag quality`);
+    return v3Model;
+  }
+  
+  // Medium content or balanced case - use configured default
+  const defaultModel = fallbackModel || 'eleven_v3';
+  console.log(`⚖️ Balanced content: using configured default ${defaultModel}`);
+  return defaultModel;
 }
 
 /**

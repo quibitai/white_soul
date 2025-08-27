@@ -87,8 +87,8 @@ function analyzeEmotionalContext(
   console.log('🎭 Analyzing sentence:', sentence.substring(0, 50) + '...');
   console.log('🎭 Available triggers:', Object.keys(placementTriggers));
   
-  // Check triggers in order of emotional impact
-  const emotionPriority = ['mystery', 'excitement', 'curiosity', 'whispers'];
+  // Check triggers in order of emotional impact - prioritize most impactful first
+  const emotionPriority = ['mystery', 'knowing', 'excitement', 'curiosity', 'concern', 'whispers'];
   
   for (const emotion of emotionPriority) {
     const triggers = placementTriggers[emotion] || [];

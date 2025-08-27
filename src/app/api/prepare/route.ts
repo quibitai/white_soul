@@ -14,15 +14,12 @@ import {
   applyConversationalRealism,
   applyWST2Rules,
   sanitizeForTTS,
-  applyAudioTags, // NEW: Audio tags for emotional delivery
-  processForNaturalTTS, // NEW: Natural processing for v3
-  convertPausesToNatural, // NEW: Convert pauses to natural punctuation
-  validateNaturalText, // NEW: Validate natural text
+  applyAudioTags, // Audio tags for v3 emotional delivery
   toSSML,
   chunk,
   type TextChunk,
   type LintReport,
-  type NaturalProcessingResult,
+
   type VoiceConfig,
 } from '@/lib/styling';
 import { saveManifest } from '@/lib/store';
@@ -259,40 +256,57 @@ export async function GET(): Promise<NextResponse> {
  * Natural processing mode for ElevenLabs v3
  * Simplified pipeline focused on natural text and audio tags
  */
-async function processNaturalMode(text: string, config: VoiceConfig, _output: string) {
+async function processNaturalMode(text: string, config: VoiceConfig, output: string) {
   try {
-    console.log('🌿 Natural Mode - Step 1: Converting pauses to natural punctuation');
+    console.log('🎭 v3 Comprehensive Pipeline - Starting full processing');
     console.log('📝 Original text:', text.substring(0, 100) + '...');
     
-    // Step 1: Convert any existing pause markup to natural punctuation
-    const naturalText = convertPausesToNatural(text);
-    console.log('🔄 After pause conversion:', naturalText.substring(0, 100) + '...');
+    // Step 1: Complete processing pipeline (normalize → lint → macros → conversational → wst2)
+    console.log('🔧 Step 1: Full text processing pipeline');
+    let processedText = normalize(text, config);
+    const lintReport = lint(processedText, config);
+    processedText = applyMacros(processedText, config);
+    processedText = applyConversationalRealism(processedText, config);
+    processedText = applyWST2Rules(processedText, config);
+    console.log('✅ After full processing:', processedText.substring(0, 100) + '...');
     
-    // Step 2: Process for natural TTS with audio tags
-    console.log('🌿 Natural Mode - Step 2: Applying audio tags');
-    const naturalResult = processForNaturalTTS(naturalText, config);
-    console.log('🎭 After audio tags:', naturalResult.text.substring(0, 100) + '...');
-    console.log('🏷️ Audio tags found:', naturalResult.audioTags);
+    // Step 2: Apply comprehensive audio tags for v3
+    console.log('🎭 Step 2: Applying comprehensive v3 audio tags');
+    const taggedText = applyAudioTags(processedText, config);
+    console.log('🏷️ After audio tags:', taggedText.substring(0, 100) + '...');
     
-    // Step 3: Validate the result
-    const validation = validateNaturalText(naturalResult.text);
+    // Step 3: Final sanitization (preserving audio tags)
+    console.log('🧹 Step 3: Final sanitization (preserving v3 tags)');
+    const cleanText = sanitizeForTTS(taggedText);
+    console.log('✨ After sanitization:', cleanText.substring(0, 100) + '...');
     
-    // Step 4: Create simple chunks (no complex chunking needed for natural approach)
-    const chunks = createNaturalChunks(naturalResult.text);
+    // Step 4: SSML conversion if needed
+    let finalText = cleanText;
+    if (config.emphasis?.use_ssml && output === 'ssml') {
+      console.log('📄 Converting to SSML');
+      finalText = toSSML(cleanText, config);
+    }
     
-    // Step 5: Generate manifest
+    // Step 5: Optimized chunking for v3
+    console.log('✂️ Step 4: Creating optimized chunks for v3');
+    const chunks = chunk(finalText, config);
+    console.log(`📦 Created ${chunks.length} chunks (avg: ${Math.round(chunks.reduce((sum, c) => sum + c.charCount, 0) / chunks.length)} chars each)`);
+    
+    // Step 6: Count and log audio tags for validation
+    const audioTagMatches = finalText.match(/\[[\w\s]+\]/g) || [];
+    console.log(`🎯 Audio tags in final text: ${audioTagMatches.length} tags found`);
+    if (audioTagMatches.length > 0) {
+      console.log('🏷️ Audio tags list:', audioTagMatches.slice(0, 10).join(', ') + (audioTagMatches.length > 10 ? '...' : ''));
+    }
+    
+    // Step 7: Generate manifest
     const manifestId = await saveManifest(chunks, {
       report: { 
-        warnings: validation.issues, 
-        bans: [],
-        stats: {
-          words: naturalResult.text.split(/\s+/).length,
-          sentences: naturalResult.text.split(/[.!?]+/).length - 1,
-          groupAddressRatio: 0, // Not applicable for natural processing
-          consecutiveGroupAddress: 0 // Not applicable for natural processing
-        }
+        warnings: lintReport.warnings, 
+        bans: lintReport.bans,
+        stats: lintReport.stats
       },
-      configVersion: 'natural-v1',
+      configVersion: 'comprehensive-v3',
       originalText: text,
     });
 
@@ -300,41 +314,34 @@ async function processNaturalMode(text: string, config: VoiceConfig, _output: st
       manifestId,
       chunks,
       report: {
-        warnings: validation.issues,
-        bans: []
+        warnings: lintReport.warnings,
+        bans: lintReport.bans
       },
       processing: {
         originalText: text,
-        naturalConverted: naturalText,
-        withAudioTags: naturalResult.text,
-        finalOutput: naturalResult.text,
-        audioTags: naturalResult.audioTags,
-        naturalPauses: naturalResult.naturalPauses,
+        processedText: processedText,
+        withAudioTags: taggedText,
+        finalOutput: finalText,
+        audioTags: audioTagMatches,
+        chunkCount: chunks.length,
+        avgChunkSize: Math.round(chunks.reduce((sum, c) => sum + c.charCount, 0) / chunks.length),
         pipeline: [
-          { step: 'pause_conversion', description: 'Convert pause markup to natural punctuation' },
-          { step: 'natural_processing', description: 'Apply natural TTS processing with audio tags' },
-          { step: 'validation', description: 'Validate natural text format' },
+          { step: 'normalization', description: 'Text normalization and cleanup' },
+          { step: 'linting', description: 'Style and content validation' },
+          { step: 'macros', description: 'Apply voice macros and shortcuts' },
+          { step: 'conversational', description: 'Apply conversational realism' },
+          { step: 'wst2_rules', description: 'Apply WST2 styling rules' },
+          { step: 'audio_tags', description: 'Apply comprehensive v3 audio tags' },
+          { step: 'sanitization', description: 'Final cleanup preserving audio tags' },
+          { step: 'chunking', description: 'Optimized chunking for v3' }
         ]
       }
     });
 
   } catch (error) {
-    console.error('Natural processing error:', error);
-    return NextResponse.json({ error: 'Failed to process text naturally' }, { status: 500 });
+    console.error('❌ v3 processing error:', error);
+    return NextResponse.json({ error: 'Failed to process text with v3 pipeline' }, { status: 500 });
   }
 }
 
-/**
- * Create simple chunks for natural processing
- */
-function createNaturalChunks(text: string) {
-  // Split by paragraph breaks, keeping natural flow
-  const paragraphs = text.split(/\n\n+/).filter(p => p.trim());
-  
-  return paragraphs.map((paragraph, index) => ({
-    id: index,
-    body: paragraph.trim(),
-    charCount: paragraph.trim().length,
-    estSeconds: Math.max(3, Math.ceil(paragraph.length / 15)) // Rough estimate: 15 chars per second
-  }));
-}
+
