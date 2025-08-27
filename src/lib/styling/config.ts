@@ -25,6 +25,7 @@ const VoiceConfigSchema = z.object({
       quality: z.string().optional(),
     }),
     seed: z.number().optional(),
+    stability_mode: z.enum(['creative', 'natural', 'robust']).optional(),
   }),
   pacing: z.object({
     wpm: z.number(),
@@ -101,26 +102,24 @@ const VoiceConfigSchema = z.object({
   audio_tags: z.object({
     enable_emotional_tags: z.boolean(),
     enable_sound_effects: z.boolean(),
-    tag_probability: z.number(),
-    sound_effect_probability: z.number(),
-    max_effects_per_chunk: z.number().optional(),
+    tag_strategy: z.enum(['contextual', 'probability', 'manual']).optional(),
+    max_tags_per_chunk: z.number().optional(),
     emotional_tags: z.object({
       laughter: z.array(z.string()),
-      whisper: z.array(z.string()),
+      whispers: z.array(z.string()),
       breaths: z.array(z.string()),
-      emotions: z.array(z.string()),
+      curiosity: z.array(z.string()),
+      excitement: z.array(z.string()),
+      mystery: z.array(z.string()),
       emphasis: z.array(z.string()),
     }),
     ambient_effects: z.object({
       mystical: z.array(z.string()),
-      nature: z.array(z.string()),
-      spiritual: z.array(z.string()),
     }),
-    emotional_triggers: z.object({
-      laughter: z.array(z.string()),
-      whisper: z.array(z.string()),
-      excitement: z.array(z.string()),
+    placement_triggers: z.object({
+      whispers: z.array(z.string()),
       curiosity: z.array(z.string()),
+      excitement: z.array(z.string()),
       mystery: z.array(z.string()),
     }),
   }).optional(),

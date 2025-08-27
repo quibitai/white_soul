@@ -14,6 +14,8 @@ export interface ModelCapabilities {
   supportsPronunciationDictionaries: boolean;
   maxDictionaries: number;
   supportsWebSocket: boolean;
+  supportsAudioTags?: boolean; // v3's key feature for emotional delivery
+  supportsStabilityModes?: boolean; // Creative, Natural, Robust modes
   recommendedSettings: {
     stability: number;
     similarity_boost: number;
@@ -82,7 +84,7 @@ export const MODEL_CAPS: Record<string, ModelCapabilities> = {
   },
   'eleven_v3': {
     id: 'eleven_v3',
-    name: 'Eleven V3 (Alpha)',
+    name: 'Eleven V3',
     supportsSSML: true,
     supportsProsody: false, // Use audio tags instead
     supportsBreaks: true,
@@ -91,10 +93,12 @@ export const MODEL_CAPS: Record<string, ModelCapabilities> = {
     supportsPronunciationDictionaries: true,
     maxDictionaries: 3,
     supportsWebSocket: false, // v3 is not for real-time applications
+    supportsAudioTags: true, // v3's key feature for emotional delivery
+    supportsStabilityModes: true, // Creative, Natural, Robust modes
     recommendedSettings: {
-      stability: 0.5,
-      similarity_boost: 0.8,
-      style: 0.0, // v3 uses different stability modes
+      stability: 0.3, // Creative mode for maximum expressiveness
+      similarity_boost: 0.85, // Higher for better voice consistency
+      style: 0.0, // Not used in v3, stability controls behavior
       speaker_boost: true,
     },
   },
@@ -230,4 +234,140 @@ export function getRecommendedSettings(modelId: string) {
 export function supportsWebSocket(modelId: string): boolean {
   const caps = getModelCapabilities(modelId);
   return caps.supportsWebSocket;
+}
+
+/**
+ * Checks if a model supports ElevenLabs v3 audio tags
+ * @param {string} modelId - ElevenLabs model ID
+ * @returns {boolean} True if model supports audio tags
+ */
+export function supportsAudioTags(modelId: string): boolean {
+  const caps = getModelCapabilities(modelId);
+  return caps.supportsAudioTags === true;
+}
+
+/**
+ * Gets v3 stability mode recommendations
+ * @param {'creative' | 'natural' | 'robust'} mode - Stability mode
+ * @returns {number} Recommended stability value
+ */
+export function getV3StabilityValue(mode: 'creative' | 'natural' | 'robust'): number {
+  const stabilityModes = {
+    creative: 0.3,  // More emotional and expressive, prone to hallucinations
+    natural: 0.5,   // Closest to original voice recording, balanced
+    robust: 0.8,    // Highly stable, less responsive to directional prompts
+  };
+  return stabilityModes[mode];
+}
+
+/**
+ * Checks if model is ElevenLabs v3 or v3 preview
+ * @param {string} modelId - ElevenLabs model ID
+ * @returns {boolean} True if model is v3 variant
+ */
+export function isV3Model(modelId: string): boolean {
+  return modelId === 'eleven_v3' || modelId.startsWith('eleven_v3_preview');
+}
+
+/**
+ * Validates v3-specific configuration and provides recommendations
+ * @param {string} modelId - ElevenLabs model ID
+ * @param {object} voiceSettings - Voice settings to validate
+ * @returns {object} Validation result with warnings and recommendations
+ */
+export function validateV3Configuration(
+  modelId: string, 
+  voiceSettings: Record<string, unknown>
+): {
+  isValid: boolean;
+  warnings: string[];
+  recommendations: string[];
+  optimizations: Record<string, unknown>;
+} {
+  const warnings: string[] = [];
+  const recommendations: string[] = [];
+  const optimizations: Record<string, unknown> = {};
+  
+  if (!isV3Model(modelId)) {
+    return { 
+      isValid: true, 
+      warnings: ['Not a v3 model - v3 validations skipped'], 
+      recommendations: [], 
+      optimizations: {} 
+    };
+  }
+
+  // Validate stability setting for v3
+  const stability = voiceSettings.stability as number;
+  if (stability !== undefined) {
+    if (stability > 0.8) {
+      warnings.push('High stability (>0.8) may reduce emotional expressiveness in v3');
+      recommendations.push('Consider stability 0.3-0.5 for better emotional range');
+      optimizations.stability_recommendation = 'creative'; // 0.3
+    } else if (stability < 0.1) {
+      warnings.push('Very low stability (<0.1) may cause inconsistent voice quality');
+      recommendations.push('Consider stability 0.3+ for voice consistency');
+      optimizations.stability_recommendation = 'natural'; // 0.5
+    } else {
+      recommendations.push(`Current stability ${stability} is well-optimized for v3`);
+    }
+  }
+
+  // Validate similarity_boost for v3
+  const similarityBoost = voiceSettings.similarity_boost as number;
+  if (similarityBoost !== undefined && similarityBoost < 0.8) {
+    warnings.push('Low similarity_boost (<0.8) may affect voice consistency in v3');
+    recommendations.push('Use similarity_boost 0.85+ for better voice fidelity');
+    optimizations.similarity_boost = 0.85;
+  }
+
+  // Check style setting (should be 0.0 for v3)
+  const style = voiceSettings.style as number;
+  if (style !== undefined && style !== 0.0) {
+    warnings.push('Style parameter is not used in v3 - stability controls behavior instead');
+    recommendations.push('Set style to 0.0 and use stability for voice control');
+    optimizations.style = 0.0;
+  }
+
+  const isValid = warnings.length === 0;
+  return { isValid, warnings, recommendations, optimizations };
+}
+
+/**
+ * Gets optimal v3 settings based on use case
+ * @param {'emotional' | 'stable' | 'balanced'} useCase - Intended use case
+ * @returns {object} Optimized settings for v3
+ */
+export function getV3OptimalSettings(useCase: 'emotional' | 'stable' | 'balanced'): {
+  stability: number;
+  similarity_boost: number;
+  style: number;
+  speaker_boost: boolean;
+  mode_description: string;
+} {
+  const settingsMap = {
+    emotional: {
+      stability: 0.3, // Creative mode
+      similarity_boost: 0.85,
+      style: 0.0,
+      speaker_boost: true,
+      mode_description: 'Creative mode - maximum emotional expressiveness'
+    },
+    balanced: {
+      stability: 0.5, // Natural mode
+      similarity_boost: 0.85,
+      style: 0.0,
+      speaker_boost: true,
+      mode_description: 'Natural mode - balanced expressiveness and consistency'
+    },
+    stable: {
+      stability: 0.8, // Robust mode
+      similarity_boost: 0.9,
+      style: 0.0,
+      speaker_boost: true,
+      mode_description: 'Robust mode - maximum consistency and stability'
+    }
+  };
+
+  return settingsMap[useCase];
 }

@@ -4,7 +4,14 @@
  */
 
 import { VoiceConfig } from '../styling/config';
-import { sanitizeForModel, getModelCapabilities, getRecommendedSettings } from './model-caps';
+import { 
+  sanitizeForModel, 
+  getModelCapabilities, 
+  getRecommendedSettings, 
+  supportsAudioTags,
+  getV3StabilityValue,
+  isV3Model 
+} from './model-caps';
 // import { selectDictionaries, toElevenLabsFormat } from './pronunciation'; // Temporarily disabled
 
 export interface TTSOptions {
@@ -67,6 +74,10 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   
   // Get recommended voice settings for the model
   const recommendedSettings = getRecommendedSettings(modelId);
+  
+  // Check if this is a v3 model for special handling
+  const isV3 = isV3Model(modelId);
+  const supportsV3AudioTags = supportsAudioTags(modelId);
 
   // Select pronunciation dictionaries (max 3)
   // Note: Temporarily disabled until dictionaries are set up in ElevenLabs dashboard
@@ -74,14 +85,26 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   // const pronunciationData = toElevenLabsFormat(selectedDictionaries);
 
   // Use regular Text-to-Speech API - v3 model supports audio tags with this endpoint
-  const isV3Model = modelId === 'eleven_v3' || modelId.startsWith('eleven_v3_preview');
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${format}`;
   
-  // Merge voice settings with any overrides
-  const finalVoiceSettings = {
+  // Optimize voice settings for v3 models
+  let finalVoiceSettings = {
     ...recommendedSettings,
     ...voiceSettings,
   };
+  
+  // Apply v3-specific optimizations
+  if (isV3 && supportsV3AudioTags) {
+    finalVoiceSettings = {
+      ...finalVoiceSettings,
+      // Use Creative mode for maximum emotional expressiveness
+      stability: finalVoiceSettings.stability || getV3StabilityValue('creative'),
+      // Higher similarity boost for better voice consistency in v3
+      similarity_boost: Math.max(finalVoiceSettings.similarity_boost || 0.85, 0.85),
+      // Style is not used in v3, but keep for compatibility
+      style: 0.0,
+    };
+  }
 
   const requestBody: Record<string, unknown> = {
     text: sanitizedText,
@@ -92,8 +115,8 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
     ...(quality && { quality }), // Add quality parameter
   };
 
-  // Add context parameters only for non-v3 models (v3 doesn't support them yet)
-  if (!isV3Model) {
+  // Add context parameters only for non-v3 models (v3 doesn't support them)
+  if (!isV3) {
     if (previousText) {
       requestBody.previous_text = previousText.slice(-300); // Limit context length
     }
@@ -110,21 +133,27 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   // }
 
   // Enable SSML parsing for v3 models (required for audio tags) or WebSocket streaming
-  if (isV3Model || (enableSSMLParsing && modelCaps.supportsWebSocket)) {
+  if (isV3 || (enableSSMLParsing && modelCaps.supportsWebSocket)) {
     requestBody.enable_ssml_parsing = true;
   }
 
-  // Debug logging for v3 models
-  if (isV3Model) {
-    console.log('🎭 ElevenLabs v3 Debug:', {
+  // Enhanced debug logging for v3 models
+  if (isV3) {
+    const audioTagsFound = sanitizedText.match(/\[[^\]]+\]/g) || [];
+    console.log('🎭 ElevenLabs v3 Enhanced:', {
       modelId,
       endpoint: 'text-to-speech',
       url,
       textPreview: sanitizedText.substring(0, 200),
-      hasAudioTags: /\[[^\]]+\]/.test(sanitizedText),
+      audioTagsSupport: supportsV3AudioTags,
+      audioTagsFound: audioTagsFound.length,
+      audioTagsList: audioTagsFound.slice(0, 5), // Show first 5 tags
       enableSSMLParsing: requestBody.enable_ssml_parsing,
-      contextSkipped: 'previous_text/next_text not supported in v3',
-      requestBody: { ...requestBody, text: '[TRUNCATED]' }
+      optimizations: {
+        contextParametersSkipped: 'v3 uses internal context understanding',
+        stabilityMode: 'Creative mode for emotional expressiveness',
+        voiceSettings: finalVoiceSettings
+      }
     });
   }
 
@@ -141,7 +170,22 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`ElevenLabs API error (${response.status}): ${errorText}`);
+      
+      // Enhanced error handling for v3 models
+      let errorMessage = `ElevenLabs API error (${response.status}): ${errorText}`;
+      
+      if (isV3) {
+        // v3-specific error suggestions
+        if (response.status === 400) {
+          errorMessage += '\n🎭 v3 Troubleshooting: Check audio tag format and ensure enable_ssml_parsing=true';
+        } else if (response.status === 429) {
+          errorMessage += '\n🎭 v3 Note: v3 model may have different rate limits than v2 models';
+        } else if (response.status === 422) {
+          errorMessage += '\n🎭 v3 Hint: Verify voice compatibility with v3 model and audio tag support';
+        }
+      }
+      
+      throw new Error(errorMessage);
     }
 
     const arrayBuffer = await response.arrayBuffer();

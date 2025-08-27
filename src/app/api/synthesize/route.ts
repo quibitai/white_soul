@@ -18,6 +18,8 @@ import {
   validateElevenLabsConfig,
   selectOptimalModel,
   getModelOptimizedSettings,
+  isV3Model,
+  getV3StabilityValue,
 } from '@/lib/tts';
 import { loadConfig } from '@/lib/styling';
 
@@ -104,12 +106,30 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       finalModelId
     });
 
-    // Get model-optimized voice settings
+    // Get model-optimized voice settings with v3 enhancements
     const optimizedSettings = getModelOptimizedSettings(finalModelId, 'full');
-    const finalVoiceSettings = {
+    let finalVoiceSettings = {
       ...optimizedSettings,
       ...config.voice.settings, // Override with config settings
     };
+
+    // Apply v3-specific optimizations
+    if (isV3Model(finalModelId)) {
+      // Use the stability mode from config if available
+      const stabilityMode = config.voice.stability_mode || 'creative';
+      finalVoiceSettings = {
+        ...finalVoiceSettings,
+        stability: getV3StabilityValue(stabilityMode),
+        similarity_boost: Math.max(finalVoiceSettings.similarity_boost || 0.85, 0.85),
+        style: 0.0, // Not used in v3
+      };
+      
+      console.log('🎭 v3 Synthesis Optimizations Applied:', {
+        stabilityMode,
+        stabilityValue: finalVoiceSettings.stability,
+        similarity_boost: finalVoiceSettings.similarity_boost
+      });
+    }
 
     // Synthesize all chunks with enhanced settings
     const audioBuffers = await synthesizeChunks(textChunks, config, {

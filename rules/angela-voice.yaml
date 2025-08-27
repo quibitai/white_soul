@@ -1,14 +1,15 @@
 voice:
   voice_id: "ELEVEN_VOICE_ID"
-  model_id: "eleven_v3"  # Changed to v3 for audio tags support
+  model_id: "eleven_v3"  # v3 for advanced emotional delivery and audio tags
   settings:
-    stability: 0.5          # Optimized from 0.35 to ElevenLabs recommended 0.5
-    similarity_boost: 0.80  # Keep current - good value
-    style: 0.0             # Reduced from 0.20 for more natural delivery
-    speaker_boost: true     # Keep current - enhances clarity
-    speed: 1.0             # Added speed control (0.7-1.2 range)
-    quality: "enhanced"     # Added quality parameter for better audio
-  seed: 123456            # optional determinism
+    stability: 0.3          # Creative mode for maximum emotional expressiveness
+    similarity_boost: 0.85  # Higher for better voice consistency in v3
+    style: 0.0             # Not used in v3 - stability controls behavior instead
+    speaker_boost: true     # Enhances clarity and presence
+    speed: 1.0             # Natural speaking rate for mystical content
+    quality: "enhanced"     # Enhanced quality for professional output
+  seed: 123456            # Deterministic generation for consistency
+  stability_mode: "creative"  # v3 stability mode: creative/natural/robust
 
 pacing:
   wpm: 145
@@ -107,33 +108,32 @@ conversational_realism:
   mystical_vocabulary: true      # Ground overly mystical language in accessible terms
 
 audio_tags:
-  enable_emotional_tags: true    # Enable ElevenLabs audio tags for emotional delivery
-  enable_sound_effects: true     # Enable sound effect tags
-  tag_probability: 0.9           # 90% chance to add emotional tags (debugging)
-  sound_effect_probability: 0.7  # 70% chance to add ambient sound effects (debugging)
-  max_effects_per_chunk: 1       # Limit sound effects to avoid overwhelming
+  enable_emotional_tags: true    # Enable ElevenLabs v3 audio tags for emotional delivery
+  enable_sound_effects: false    # Simplified for v3 - focus on emotional expression first
+  tag_strategy: "contextual"     # Strategic placement based on content, not probability
+  max_tags_per_chunk: 2         # Conservative limit for natural flow
   
-  # ElevenLabs v3 compatible audio tags
+  # v3-optimized emotional delivery tags (verified compatibility)
   emotional_tags:
-    laughter: ["[laughs]", "[giggles]", "[chuckles]"]
-    whisper: ["[whispers]"]
-    breaths: ["[sighs]", "[exhales]", "[takes a breath]"]
-    emotions: ["[curious]", "[excited]", "[thoughtful]", "[mysterious]"]
-    emphasis: ["[emphasizes]", "[with conviction]"]
-  
-  # Mystical/Tarot-themed sound effects
+    # Core emotional expressions
+    laughter: ["[laughs]", "[giggles]", "[chuckles]"] 
+    whispers: ["[whispers]"]                          # For intimate, secretive moments
+    breaths: ["[sighs]", "[exhales]"]                 # Natural vocal breaks
+    curiosity: ["[curious]", "[intrigued]"]           # Perfect for card exploration
+    excitement: ["[excited]", "[amazed]"]             # Energy surges in readings
+    mystery: ["[mysterious]", "[knowing]"]            # Angela's mystical presence
+    emphasis: ["[emphasizes]"]                        # For key insights
+    
+  # v3-compatible sound effects (minimal, strategic use)
   ambient_effects:
-    mystical: ["[soft wind]", "[gentle chimes]", "[rustling cards]"]
-    nature: ["[flowing water]", "[distant thunder]", "[night sounds]"]
-    spiritual: ["[bell rings softly]", "[candle flickers]", "[crystal resonance]"]
+    mystical: ["[soft wind]", "[gentle chimes]"]      # Subtle atmosphere only
   
-  # Context triggers for automatic tag insertion
-  emotional_triggers:
-    laughter: ["funny", "amusing", "hilarious", "joke", "laugh"]
-    whisper: ["secret", "quietly", "softly", "intimate", "personal", "hermit", "isolation", "solitude"]
-    excitement: ["amazing", "incredible", "wow", "fantastic", "powerful", "energy", "transformation"]
-    curiosity: ["wonder", "interesting", "curious", "explore", "discover", "card", "reading", "insight"]
-    mystery: ["hidden", "mysterious", "unknown", "reveal", "unveil", "tarot", "cards", "divine", "spiritual"]
+  # Simplified context-aware triggers for natural placement
+  placement_triggers:
+    whispers: ["secret", "hidden", "quietly", "intimate", "hermit", "solitude"]
+    curiosity: ["wonder", "curious", "explore", "discover", "card", "insight"] 
+    excitement: ["amazing", "incredible", "powerful", "energy", "transformation"]
+    mystery: ["mysterious", "reveal", "unveil", "tarot", "divine", "spiritual"]
 
 speech_patterns:
   hesitation_cues:

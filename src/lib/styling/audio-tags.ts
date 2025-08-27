@@ -1,97 +1,72 @@
 /**
- * Audio Tags Processor for ElevenLabs Emotional Delivery
- * Implements ElevenLabs v3 audio tags for enhanced speech expressiveness
+ * ElevenLabs v3 Audio Tags Processor
+ * Optimized for eleven_v3 model with contextual emotional delivery
+ * Implements strategic tag placement for natural speech flow
  */
 
 import { VoiceConfig } from './config';
 
 /**
- * Applies ElevenLabs audio tags for emotional delivery and ambient effects
+ * Applies ElevenLabs v3 audio tags for emotional delivery with contextual placement
  * @param {string} text - Input text to process
  * @param {VoiceConfig} config - Voice configuration
- * @returns {string} Text with audio tags inserted
+ * @returns {string} Text with strategically placed audio tags
  */
 export function applyAudioTags(text: string, config: VoiceConfig): string {
-  console.log('🎭 Audio Tags - Starting processing:', {
-    hasConfig: !!config.audio_tags,
-    emotionalEnabled: config.audio_tags?.enable_emotional_tags,
-    soundEffectsEnabled: config.audio_tags?.enable_sound_effects,
+  console.log('🎭 v3 Audio Tags - Processing:', {
+    modelId: config.voice.model_id,
+    isV3Compatible: isV3Compatible(config.voice.model_id),
+    tagStrategy: config.audio_tags?.tag_strategy || 'contextual',
     textPreview: text.substring(0, 100) + '...'
   });
 
-  if (!config.audio_tags?.enable_emotional_tags && !config.audio_tags?.enable_sound_effects) {
-    console.log('🎭 Audio Tags - Disabled, returning original text');
+  // Early return if audio tags are disabled or model is not v3 compatible
+  if (!config.audio_tags?.enable_emotional_tags || !isV3Compatible(config.voice.model_id)) {
+    console.log('🎭 Audio Tags - Disabled or incompatible model, returning original');
     return text;
   }
 
-  let processed = text;
-
-  // Apply emotional tags based on context
-  if (config.audio_tags?.enable_emotional_tags) {
-    console.log('🎭 Audio Tags - Applying emotional tags');
-    processed = applyEmotionalTags(processed, config);
-  }
-
-  // Apply ambient sound effects
-  if (config.audio_tags?.enable_sound_effects) {
-    console.log('🎭 Audio Tags - Applying sound effects');
-    processed = applyAmbientEffects(processed, config);
-  }
-
-  console.log('🎭 Audio Tags - Final result:', {
+  // Process text with contextual tag placement
+  const processed = applyContextualTags(text, config);
+  
+  console.log('🎭 v3 Audio Tags - Result:', {
     originalLength: text.length,
     processedLength: processed.length,
     hasChanges: text !== processed,
-    preview: processed.substring(0, 100) + '...'
+    tagsAdded: (processed.match(/\[[^\]]+\]/g) || []).length
   });
 
   return processed;
 }
 
 /**
- * Applies emotional audio tags based on contextual triggers
+ * Applies contextual audio tags based on content analysis and natural placement
  */
-function applyEmotionalTags(text: string, config: VoiceConfig): string {
+function applyContextualTags(text: string, config: VoiceConfig): string {
   if (!config.audio_tags) return text;
 
-  const { emotional_triggers, emotional_tags, tag_probability } = config.audio_tags;
+  const { emotional_tags, placement_triggers, max_tags_per_chunk = 2 } = config.audio_tags;
   
-  console.log('🎭 Emotional Tags - Configuration:', {
-    hasTriggers: !!emotional_triggers,
-    hasTags: !!emotional_tags,
-    tagProbability: tag_probability,
-    triggerKeys: emotional_triggers ? Object.keys(emotional_triggers) : []
-  });
-
-  // Process each sentence for emotional context
+  // Split text into processable segments (sentences)
   const sentences = text.split(/(?<=[.!?])\s+/);
-  console.log('🎭 Emotional Tags - Processing sentences:', sentences.length);
+  let tagsUsed = 0;
   
   const processedSentences = sentences.map((sentence, index) => {
-    const randomValue = Math.random();
-    console.log(`🎭 Sentence ${index + 1}: probability check ${randomValue} vs ${tag_probability}`);
-    
-    if (randomValue > tag_probability) {
-      console.log(`🎭 Sentence ${index + 1}: skipped due to probability`);
+    // Avoid over-tagging
+    if (tagsUsed >= max_tags_per_chunk) {
       return sentence;
     }
 
-    // Check for emotional triggers
-    console.log(`🎭 Sentence ${index + 1}: "${sentence.substring(0, 50)}..."`);
+    // Analyze sentence for emotional context
+    const emotionalContext = analyzeEmotionalContext(sentence, placement_triggers);
     
-    for (const [emotion, triggers] of Object.entries(emotional_triggers)) {
-      for (const trigger of triggers) {
-        const pattern = new RegExp(`\\b${trigger}\\b`, 'gi');
-        if (pattern.test(sentence)) {
-          console.log(`🎭 MATCH FOUND! Emotion: ${emotion}, Trigger: "${trigger}"`);
-          const tagged = insertEmotionalTag(sentence, emotion, emotional_tags);
-          console.log(`🎭 Tagged sentence: "${tagged.substring(0, 100)}..."`);
-          return tagged;
-        }
+    if (emotionalContext) {
+      const tag = selectAppropriateTag(emotionalContext, emotional_tags);
+      if (tag) {
+        tagsUsed++;
+        return insertTagNaturally(sentence, tag, emotionalContext);
       }
     }
-    
-    console.log(`🎭 Sentence ${index + 1}: No triggers matched`);
 
     return sentence;
   });
@@ -100,225 +75,231 @@ function applyEmotionalTags(text: string, config: VoiceConfig): string {
 }
 
 /**
- * Inserts appropriate emotional tag for detected emotion
+ * Analyzes sentence for emotional context using placement triggers
  */
-function insertEmotionalTag(
+function analyzeEmotionalContext(
   sentence: string, 
-  emotion: string, 
+  placementTriggers: Record<string, string[]>
+): string | null {
+  const lowerSentence = sentence.toLowerCase();
+  
+  // Check triggers in order of emotional impact
+  const emotionPriority = ['mystery', 'excitement', 'curiosity', 'whispers'];
+  
+  for (const emotion of emotionPriority) {
+    const triggers = placementTriggers[emotion] || [];
+    
+    for (const trigger of triggers) {
+      const pattern = new RegExp(`\\b${trigger}\\b`, 'i');
+      if (pattern.test(lowerSentence)) {
+        console.log(`🎭 Context Match: "${emotion}" triggered by "${trigger}"`);
+        return emotion;
+      }
+    }
+  }
+  
+  return null;
+}
+
+/**
+ * Selects appropriate tag based on emotional context
+ */
+function selectAppropriateTag(
+  emotionalContext: string,
   emotionalTags: Record<string, string[]>
+): string | null {
+  const availableTags = emotionalTags[emotionalContext];
+  
+  if (!availableTags || availableTags.length === 0) {
+    return null;
+  }
+
+  // For v3, prefer single consistent tags per emotion
+  // Use first tag for consistency unless variety is specifically needed
+  return availableTags[0];
+}
+
+/**
+ * Inserts tag at natural speech break points for optimal flow
+ */
+function insertTagNaturally(
+  sentence: string,
+  tag: string,
+  emotionalContext: string
 ): string {
-  const tagOptions = emotionalTags[emotion];
-  if (!tagOptions || tagOptions.length === 0) return sentence;
-
-  const selectedTag = tagOptions[Math.floor(Math.random() * tagOptions.length)];
+  // Strategic placement based on emotional context and sentence structure
   
-  // Insert tag at natural break points
-  const insertionPoints = [
-    // After introductory phrases
-    /^(Well|So|Now|Actually|You know),?\s*/,
-    // Before key phrases
-    /\b(this is|that's|it's really|I think)\b/i,
-    // After pauses or breaks
-    /(<break[^>]*\/>)\s*/g,
-  ];
-
-  for (const pattern of insertionPoints) {
-    if (pattern.test(sentence)) {
-      return sentence.replace(pattern, `$1${selectedTag} `);
-    }
+  // For whispers: place at beginning for intimate delivery
+  if (emotionalContext === 'whispers') {
+    return `${tag} ${sentence}`;
   }
-
-  // Default: insert at beginning of sentence
-  return `${selectedTag} ${sentence}`;
-}
-
-/**
- * Applies ambient sound effects based on content context
- */
-function applyAmbientEffects(text: string, config: VoiceConfig): string {
-  if (!config.audio_tags) return text;
-
-  const processed = text;
-  const { ambient_effects, sound_effect_probability, max_effects_per_chunk } = config.audio_tags;
-
-  // Limit effects per chunk to avoid overwhelming
-  let effectsAdded = 0;
-  const maxEffects = max_effects_per_chunk || 1;
-
-  // Context-based sound effect triggers
-  const contextTriggers = {
-    mystical: [
-      'energy', 'spiritual', 'universe', 'cosmic', 'divine', 'sacred',
-      'mystical', 'magical', 'enchanted', 'ethereal', 'transcendent'
-    ],
-    nature: [
-      'earth', 'water', 'wind', 'fire', 'nature', 'natural', 'flowing',
-      'growing', 'blooming', 'seasonal', 'elemental'
-    ],
-    spiritual: [
-      'meditation', 'prayer', 'blessing', 'ritual', 'ceremony', 'sacred',
-      'holy', 'divine', 'enlightened', 'awakened', 'transformed'
-    ]
-  };
-
-  // Process text in chunks (paragraphs)
-  const paragraphs = processed.split(/\n\s*\n/);
   
-  const processedParagraphs = paragraphs.map(paragraph => {
-    if (effectsAdded >= maxEffects) return paragraph;
-    if (Math.random() > sound_effect_probability) return paragraph;
-
-    // Check for context triggers
-    for (const [context, triggers] of Object.entries(contextTriggers)) {
-      for (const trigger of triggers) {
-        const pattern = new RegExp(`\\b${trigger}\\b`, 'gi');
-        if (pattern.test(paragraph)) {
-          const effect = selectAmbientEffect(context, ambient_effects);
-          if (effect) {
-            effectsAdded++;
-            return insertAmbientEffect(paragraph, effect);
-          }
-        }
-      }
-    }
-
-    return paragraph;
-  });
-
-  return processedParagraphs.join('\n\n');
-}
-
-/**
- * Selects appropriate ambient effect for context
- */
-function selectAmbientEffect(context: string, ambientEffects: Record<string, string[]>): string | null {
-  const effects = ambientEffects[context];
-  if (!effects || effects.length === 0) return null;
-  
-  return effects[Math.floor(Math.random() * effects.length)];
-}
-
-/**
- * Inserts ambient effect at appropriate location
- */
-function insertAmbientEffect(paragraph: string, effect: string): string {
-  // Insert at natural pause points or beginning of paragraph
-  const sentences = paragraph.split(/(?<=[.!?])\s+/);
-  
-  if (sentences.length > 1) {
-    // Insert between sentences
-    const insertIndex = Math.floor(sentences.length / 2);
-    sentences.splice(insertIndex, 0, effect);
-    return sentences.join(' ');
-  } else {
-    // Insert at beginning of single sentence
-    return `${effect} ${paragraph}`;
-  }
-}
-
-/**
- * Analyzes text for audio tag opportunities and provides insights
- */
-export function analyzeAudioTagOpportunities(text: string, config: VoiceConfig): {
-  emotionalOpportunities: string[];
-  ambientOpportunities: string[];
-  recommendations: string[];
-} {
-  const emotionalOpportunities: string[] = [];
-  const ambientOpportunities: string[] = [];
-  const recommendations: string[] = [];
-
-  if (!config.audio_tags) {
-    recommendations.push('Enable audio_tags in configuration to enhance emotional delivery');
-    return { emotionalOpportunities, ambientOpportunities, recommendations };
-  }
-
-  // Analyze emotional opportunities
-  const { emotional_triggers } = config.audio_tags;
-  for (const [emotion, triggers] of Object.entries(emotional_triggers)) {
-    for (const trigger of triggers) {
-      const pattern = new RegExp(`\\b${trigger}\\b`, 'gi');
-      const matches = text.match(pattern);
-      if (matches) {
-        emotionalOpportunities.push(`${emotion}: ${matches.length} opportunities`);
+  // For curiosity: place before key discovery words
+  if (emotionalContext === 'curiosity') {
+    const discoveryPatterns = [
+      /(\b(?:this|that|it)'s\b)/i,
+      /(\bwhat(?:'s|'re)?\b)/i,
+      /(\bhow\b)/i
+    ];
+    
+    for (const pattern of discoveryPatterns) {
+      if (pattern.test(sentence)) {
+        return sentence.replace(pattern, `${tag} $1`);
       }
     }
   }
-
-  // Analyze ambient opportunities
-  const contextTriggers = {
-    mystical: ['energy', 'spiritual', 'universe', 'cosmic', 'divine'],
-    nature: ['earth', 'water', 'wind', 'fire', 'nature'],
-    spiritual: ['meditation', 'prayer', 'blessing', 'ritual', 'ceremony']
-  };
-
-  for (const [context, triggers] of Object.entries(contextTriggers)) {
-    for (const trigger of triggers) {
-      const pattern = new RegExp(`\\b${trigger}\\b`, 'gi');
-      const matches = text.match(pattern);
-      if (matches) {
-        ambientOpportunities.push(`${context}: ${matches.length} opportunities`);
+  
+  // For excitement: place before power words
+  if (emotionalContext === 'excitement') {
+    const powerPatterns = [
+      /(\b(?:amazing|incredible|powerful|energy)\b)/i,
+      /(\b(?:wow|yes|absolutely)\b)/i
+    ];
+    
+    for (const pattern of powerPatterns) {
+      if (pattern.test(sentence)) {
+        return sentence.replace(pattern, `${tag} $1`);
       }
     }
   }
-
-  // Generate recommendations
-  if (emotionalOpportunities.length > 0) {
-    recommendations.push(`Found ${emotionalOpportunities.length} emotional tag opportunities`);
+  
+  // For mystery: place after pause-inducing punctuation
+  if (emotionalContext === 'mystery') {
+    const mysteryPatterns = [
+      /(\.\.\.)\s*/g,
+      /(\,)\s*(?=(?:but|however|yet)\b)/i
+    ];
+    
+    for (const pattern of mysteryPatterns) {
+      if (pattern.test(sentence)) {
+        return sentence.replace(pattern, `$1 ${tag} `);
+      }
+    }
   }
-  if (ambientOpportunities.length > 0) {
-    recommendations.push(`Found ${ambientOpportunities.length} ambient effect opportunities`);
-  }
-  if (emotionalOpportunities.length === 0 && ambientOpportunities.length === 0) {
-    recommendations.push('Consider adding more expressive language for better audio tag utilization');
-  }
-
-  return { emotionalOpportunities, ambientOpportunities, recommendations };
+  
+  // Default: place at natural sentence beginning
+  return `${tag} ${sentence}`;
 }
 
 /**
- * Validates audio tags in text for ElevenLabs compatibility
+ * Checks if model supports v3 audio tags
  */
-export function validateAudioTags(text: string): {
+function isV3Compatible(modelId: string): boolean {
+  return modelId === 'eleven_v3' || modelId.startsWith('eleven_v3_preview');
+}
+
+/**
+ * Validates v3 audio tags format and compatibility
+ */
+export function validateV3AudioTags(text: string): {
   validTags: string[];
   invalidTags: string[];
   warnings: string[];
+  recommendations: string[];
 } {
   const validTags: string[] = [];
   const invalidTags: string[] = [];
   const warnings: string[] = [];
+  const recommendations: string[] = [];
 
   // Extract all audio tags
   const tagPattern = /\[([^\]]+)\]/g;
   const tags = text.match(tagPattern) || [];
 
-  // ElevenLabs v3 supported tags (partial list)
-  const supportedTags = [
+  // v3 verified compatible tags
+  const v3CompatibleTags = [
     'laughs', 'giggles', 'chuckles', 'whispers', 'sighs', 'exhales',
-    'curious', 'excited', 'thoughtful', 'mysterious', 'emphasizes',
-    'soft wind', 'gentle chimes', 'rustling cards', 'flowing water',
-    'bell rings softly', 'candle flickers', 'crystal resonance'
+    'curious', 'intrigued', 'excited', 'amazed', 'mysterious', 'knowing',
+    'emphasizes', 'soft wind', 'gentle chimes'
   ];
 
   for (const tag of tags) {
-    const tagContent = tag.slice(1, -1); // Remove brackets
+    const tagContent = tag.slice(1, -1).toLowerCase();
     
-    if (supportedTags.some(supported => tagContent.toLowerCase().includes(supported.toLowerCase()))) {
+    if (v3CompatibleTags.some(compatible => 
+        compatible.toLowerCase() === tagContent || 
+        tagContent.includes(compatible.toLowerCase())
+    )) {
       validTags.push(tag);
     } else {
       invalidTags.push(tag);
+      warnings.push(`Tag "${tag}" may not be optimized for v3`);
     }
   }
 
-  // Generate warnings
-  if (invalidTags.length > 0) {
-    warnings.push(`${invalidTags.length} potentially unsupported audio tags found`);
-  }
-
+  // Analysis and recommendations
   const tagDensity = tags.length / text.split(' ').length;
-  if (tagDensity > 0.1) {
-    warnings.push('High audio tag density may affect speech naturalness');
+  
+  if (tagDensity > 0.05) {
+    warnings.push('High tag density may affect natural speech flow');
+    recommendations.push('Consider reducing tags to 1-2 per chunk for better naturalness');
+  }
+  
+  if (tags.length === 0 && text.length > 100) {
+    recommendations.push('Consider adding contextual emotional tags for enhanced delivery');
   }
 
-  return { validTags, invalidTags, warnings };
+  if (validTags.length > 0) {
+    recommendations.push(`${validTags.length} v3-compatible tags found - good for emotional expression`);
+  }
+
+  return { validTags, invalidTags, warnings, recommendations };
+}
+
+/**
+ * Analyzes text for optimal v3 audio tag opportunities
+ */
+export function analyzeV3TagOpportunities(text: string, config: VoiceConfig): {
+  emotionalOpportunities: Array<{emotion: string, count: number, examples: string[]}>;
+  recommendations: string[];
+  optimalTagCount: number;
+} {
+  const emotionalOpportunities: Array<{emotion: string, count: number, examples: string[]}> = [];
+  const recommendations: string[] = [];
+
+  if (!config.audio_tags?.placement_triggers) {
+    recommendations.push('Configure placement_triggers for automatic tag detection');
+    return { emotionalOpportunities, recommendations, optimalTagCount: 0 };
+  }
+
+  const { placement_triggers } = config.audio_tags;
+  const lowerText = text.toLowerCase();
+
+  // Analyze opportunities for each emotion
+  for (const [emotion, triggers] of Object.entries(placement_triggers)) {
+    const examples: string[] = [];
+    let count = 0;
+
+    for (const trigger of triggers) {
+      const pattern = new RegExp(`\\b${trigger}\\b`, 'gi');
+      const matches = lowerText.match(pattern);
+      if (matches) {
+        count += matches.length;
+        examples.push(...matches.slice(0, 3)); // Limit examples
+      }
+    }
+
+    if (count > 0) {
+      emotionalOpportunities.push({ emotion, count, examples });
+    }
+  }
+
+  // Generate recommendations
+  const totalOpportunities = emotionalOpportunities.reduce((sum, opp) => sum + opp.count, 0);
+  const wordCount = text.split(' ').length;
+  const optimalTagCount = Math.min(Math.floor(wordCount / 100), 3); // 1 tag per ~100 words, max 3
+
+  if (totalOpportunities > 0) {
+    recommendations.push(`Found ${totalOpportunities} tag opportunities across ${emotionalOpportunities.length} emotions`);
+  }
+
+  if (optimalTagCount > 0) {
+    recommendations.push(`Optimal tag count for this text: ${optimalTagCount} tags`);
+  }
+
+  if (totalOpportunities === 0) {
+    recommendations.push('Consider adding more expressive language to enable better emotional tagging');
+  }
+
+  return { emotionalOpportunities, recommendations, optimalTagCount };
 }
