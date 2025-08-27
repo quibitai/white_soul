@@ -81,8 +81,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Load voice configuration
     const config = await loadConfig();
 
-    // Extract text chunks for synthesis
-    const textChunks = manifest.chunks.map(chunk => chunk.body);
+    // Extract full chunk objects (needed for analysis) and text strings (needed for synthesis)  
+    const fullChunks = manifest.chunks;
+    const textChunks = fullChunks.map(chunk => chunk.body);
     
     if (textChunks.length === 0) {
       return NextResponse.json(
@@ -95,8 +96,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const finalVoiceId = voiceId || process.env.ELEVEN_VOICE_ID || config.voice.voice_id;
     const baseModelId = modelId || process.env.ELEVEN_MODEL_ID || config.voice.model_id;
     
-    // Analyze content to determine optimal model
-    const contentStats = analyzeContentForModelSelection(textChunks, manifest);
+    // Analyze content to determine optimal model (using full chunk objects)
+    const contentStats = analyzeContentForModelSelection(fullChunks, manifest);
     const smartModelId = selectModelForContent(contentStats, config, baseModelId);
     const finalModelId = modelId || smartModelId; // Use provided model or smart selection
     
@@ -105,7 +106,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       envModelId: process.env.ELEVEN_MODEL_ID,
       configModelId: config.voice.model_id,
       baseModelId,
-      optimalModelId,
+      smartModelId,
       finalModelId
     });
 
@@ -224,14 +225,31 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
  * Analyzes content characteristics to determine optimal model selection
  */
 function analyzeContentForModelSelection(textChunks: { id: number; body: string; charCount: number; estSeconds: number }[], manifest: any) {
-  const totalChars = textChunks.reduce((sum, chunk) => sum + chunk.charCount, 0);
-  const totalEstSeconds = textChunks.reduce((sum, chunk) => sum + chunk.estSeconds, 0);
-  const avgChunkSize = totalChars / textChunks.length;
+  console.log('📊 Content Analysis Debug:', {
+    chunkCount: textChunks.length,
+    sampleChunk: textChunks[0] ? {
+      hasCharCount: 'charCount' in textChunks[0],
+      hasEstSeconds: 'estSeconds' in textChunks[0],
+      charCountValue: textChunks[0].charCount,
+      estSecondsValue: textChunks[0].estSeconds,
+      bodyPreview: textChunks[0].body?.substring(0, 100) + '...'
+    } : 'No chunks'
+  });
+
+  const totalChars = textChunks.reduce((sum, chunk) => sum + (chunk.charCount || 0), 0);
+  const totalEstSeconds = textChunks.reduce((sum, chunk) => sum + (chunk.estSeconds || 0), 0);
+  const avgChunkSize = textChunks.length > 0 ? totalChars / textChunks.length : 0;
   
-  // Count audio tags in content
-  const allText = textChunks.map(chunk => chunk.body).join(' ');
+  // Count audio tags in content - improved regex to catch all variations
+  const allText = textChunks.map(chunk => chunk.body || '').join(' ');
   const audioTagMatches = allText.match(/\[[\w\s]+\]/g) || [];
-  const audioTagDensity = audioTagMatches.length / textChunks.length; // tags per chunk
+  const audioTagDensity = textChunks.length > 0 ? audioTagMatches.length / textChunks.length : 0;
+  
+  console.log('🏷️ Audio Tag Detection:', {
+    textSample: allText.substring(0, 200) + '...',
+    tagsFound: audioTagMatches,
+    tagCount: audioTagMatches.length
+  });
   
   // Analyze content complexity
   const hasComplexEmotions = audioTagMatches.some(tag => 
