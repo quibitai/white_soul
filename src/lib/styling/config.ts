@@ -62,6 +62,7 @@ const VoiceConfigSchema = z.object({
   chunking: z.object({
     target_seconds: z.number(),
     max_chars: z.number(),
+    min_chars: z.number().optional(),
     guardrails: z.object({
       start_with_micro_pause: z.boolean(),
       end_with_short_pause: z.boolean(),
@@ -93,6 +94,7 @@ const VoiceConfigSchema = z.object({
     proof: z.string(),
     streaming: z.string(),
     full: z.string(),
+    long_form: z.string().optional(),
   }).optional(),
   sound_effects: z.object({
     default_duration: z.number(),

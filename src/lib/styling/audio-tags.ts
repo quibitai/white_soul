@@ -83,21 +83,27 @@ function analyzeEmotionalContext(
 ): string | null {
   const lowerSentence = sentence.toLowerCase();
   
+  // Debug logging for trigger analysis
+  console.log('🎭 Analyzing sentence:', sentence.substring(0, 50) + '...');
+  console.log('🎭 Available triggers:', Object.keys(placementTriggers));
+  
   // Check triggers in order of emotional impact
   const emotionPriority = ['mystery', 'excitement', 'curiosity', 'whispers'];
   
   for (const emotion of emotionPriority) {
     const triggers = placementTriggers[emotion] || [];
+    console.log(`🎭 Checking ${emotion} triggers:`, triggers);
     
     for (const trigger of triggers) {
       const pattern = new RegExp(`\\b${trigger}\\b`, 'i');
       if (pattern.test(lowerSentence)) {
-        console.log(`🎭 Context Match: "${emotion}" triggered by "${trigger}"`);
+        console.log(`🎭 ✅ MATCH FOUND: "${emotion}" triggered by "${trigger}" in sentence`);
         return emotion;
       }
     }
   }
   
+  console.log('🎭 ❌ No triggers matched for sentence');
   return null;
 }
 

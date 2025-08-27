@@ -52,11 +52,12 @@ emphasis:
   caps_max_per_sentence: 2
 
 chunking:
-  target_seconds: 25
-  max_chars: 1800
+  target_seconds: 30          # Increased for longer, more natural chunks
+  max_chars: 2500             # Increased from 1800 to reduce chunk count
+  min_chars: 800              # Added minimum to prevent tiny chunks
   guardrails:
-    start_with_micro_pause: true
-    end_with_short_pause: true
+    start_with_micro_pause: false  # Disabled to reduce processing overhead
+    end_with_short_pause: false    # Disabled to reduce artifacts
 
 punctuation:
   # WST2 Studio Speech Rules - Punctuation + Space Logic
@@ -92,6 +93,7 @@ model_selection:
   proof: "eleven_flash_v2_5"      # Low latency for quick previews
   streaming: "eleven_turbo_v2_5"   # Balanced for real-time
   full: "eleven_v3"               # v3 model for audio tags and emotional delivery
+  long_form: "eleven_turbo_v2_5"  # More efficient for 3+ minute content
   
 # Sound effects generation settings
 sound_effects:
