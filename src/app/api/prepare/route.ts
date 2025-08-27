@@ -275,9 +275,9 @@ async function processNaturalMode(text: string, config: VoiceConfig, output: str
     const taggedText = applyAudioTags(processedText, config);
     console.log('🏷️ After audio tags:', taggedText.substring(0, 100) + '...');
     
-    // Step 3: Final sanitization (preserving audio tags)
-    console.log('🧹 Step 3: Final sanitization (preserving v3 tags)');
-    const cleanText = sanitizeForTTS(taggedText);
+    // Step 3: Final sanitization (model-aware for v3)
+    console.log('🧹 Step 3: Model-aware sanitization for v3');
+    const cleanText = sanitizeForTTS(taggedText, config);
     console.log('✨ After sanitization:', cleanText.substring(0, 100) + '...');
     
     // Step 4: SSML conversion if needed

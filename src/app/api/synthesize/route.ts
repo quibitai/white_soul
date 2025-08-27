@@ -287,25 +287,25 @@ function selectModelForContent(stats: any, config: VoiceConfig, fallbackModel: s
     hasComplexEmotions: stats.hasComplexEmotions
   });
 
-  // If user has explicitly configured long_form model and this is long content, use it
+  // CRITICAL: Prioritize audio tag compatibility over everything else
+  if (stats.audioTagCount > 0) {
+    const v3Model = 'eleven_v3';
+    console.log(`🎭 Audio tags detected (${stats.audioTagCount} tags): using ${v3Model} for compatibility (overriding long-form preference)`);
+    return v3Model;
+  }
+  
+  // If user has explicitly configured long_form model and this is long content with no audio tags, use it
   if (stats.isLongForm && config.model_selection?.long_form) {
-    console.log(`🏃‍♂️ Using long-form model: ${config.model_selection.long_form} (content: ${Math.round(stats.totalEstSeconds / 60)}m)`);
+    console.log(`🏃‍♂️ Using long-form model: ${config.model_selection.long_form} (content: ${Math.round(stats.totalEstSeconds / 60)}m, no audio tags)`);
     return config.model_selection.long_form;
   }
   
-  // Smart model selection logic:
-  if (stats.isLongForm && stats.audioTagDensity < 0.5) {
-    // Long content with few audio tags - use turbo for speed and consistency
+  // Fallback logic for content without audio tags:
+  if (stats.isLongForm) {
+    // Long content with no audio tags - use turbo for speed and consistency
     const turboModel = 'eleven_turbo_v2_5';
-    console.log(`🏃‍♂️ Long content with low tag density: using ${turboModel} for performance`);
+    console.log(`🏃‍♂️ Long content with no audio tags: using ${turboModel} for performance`);
     return turboModel;
-  }
-  
-  if (!stats.isLongForm && (stats.hasComplexEmotions || stats.hasHighTagDensity)) {
-    // Short content with rich emotional expression - use v3 for quality
-    const v3Model = 'eleven_v3';
-    console.log(`🎭 Short content with rich emotions: using ${v3Model} for audio tag quality`);
-    return v3Model;
   }
   
   // Medium content or balanced case - use configured default

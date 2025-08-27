@@ -19,6 +19,9 @@ export function sanitizeForTTS(text: string, config: VoiceConfig): string {
   // Remove common metadata artifacts that can be spoken by TTS
   sanitized = removeMetadataArtifacts(sanitized);
   
+  // Model-aware processing: remove incompatible tags for target model
+  sanitized = removeModelIncompatibleTags(sanitized, config);
+  
   // Remove processing artifacts
   sanitized = removeProcessingArtifacts(sanitized);
   
@@ -78,6 +81,54 @@ function removeMetadataArtifacts(text: string): string {
     cleaned = cleaned.replace(`__AUDIO_TAG_${index}__`, tag);
   });
 
+  return cleaned;
+}
+
+/**
+ * Removes tags incompatible with the target TTS model
+ * - For v3 models: removes v2-style pause tags and converts to natural punctuation
+ * - Preserves audio tags that are compatible with the target model
+ */
+function removeModelIncompatibleTags(text: string, config: VoiceConfig): string {
+  let cleaned = text;
+  const modelId = config.voice.model_id || 'eleven_v3';
+  const isV3Model = modelId === 'eleven_v3';
+  
+  if (isV3Model) {
+    console.log('🎯 v3 Model detected: removing v2 pause tags and converting to natural flow');
+    
+    // Remove v2-style pause tags and convert to natural punctuation
+    cleaned = cleaned.replace(/<pause,(\d+)>/g, (match, ms) => {
+      const duration = parseInt(ms);
+      if (duration <= 300) return ',';        // Short pause = comma
+      if (duration <= 800) return '...';      // Medium pause = ellipses  
+      if (duration <= 2000) return '. ';      // Long pause = period + space
+      return '.\n\n';                         // Very long pause = paragraph break
+    });
+    
+    // Remove SSML breaks and convert to natural punctuation
+    cleaned = cleaned.replace(/<break\s+time="([0-9.]+)s?"\s*\/>/g, (match, seconds) => {
+      const duration = parseFloat(seconds) * 1000;
+      if (duration <= 500) return ',';
+      if (duration <= 1000) return '...';
+      if (duration <= 2000) return '. ';
+      return '.\n\n';
+    });
+    
+    // Remove any remaining XML-style tags that v3 doesn't support
+    cleaned = cleaned.replace(/<(?!\/?(pause|break))[^>]*>/g, '');
+    
+    // Log audio tags that should be preserved
+    const audioTags = cleaned.match(/\[[^\]]+\]/g) || [];
+    if (audioTags.length > 0) {
+      console.log(`🎭 Preserving ${audioTags.length} v3 audio tags:`, audioTags.slice(0, 5));
+    }
+  } else {
+    console.log('🎯 v2 Model detected: preserving pause tags, removing v3-only features');
+    // For v2 models, could remove v3-specific audio tags if needed
+    // Currently keeping them as they might work or be ignored
+  }
+  
   return cleaned;
 }
 
