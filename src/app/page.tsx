@@ -77,6 +77,7 @@ export default function Home() {
   });
   const [annotatedScript, setAnnotatedScript] = useState<string>('');
   const [voiceVersions, setVoiceVersions] = useState<VoiceVersion[]>([]);
+  const [copiedTag, setCopiedTag] = useState<string>('');
 
   // Set audio source when URL is available
   useEffect(() => {
@@ -135,8 +136,20 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to prepare text');
+        let errorMessage = 'Failed to prepare text';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch {
+          // If response is not JSON, try to get text
+          try {
+            const textError = await response.text();
+            errorMessage = textError || errorMessage;
+          } catch (textError) {
+            console.error('Failed to parse error response:', textError);
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -181,8 +194,20 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to synthesize audio');
+        let errorMessage = 'Failed to synthesize audio';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch {
+          // If response is not JSON, try to get text
+          try {
+            const textError = await response.text();
+            errorMessage = textError || errorMessage;
+          } catch (textError) {
+            console.error('Failed to parse error response:', textError);
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -218,8 +243,20 @@ export default function Home() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to prepare edited text');
+        let errorMessage = 'Failed to prepare edited text';
+        try {
+          const error = await response.json();
+          errorMessage = error.error || errorMessage;
+        } catch {
+          // If response is not JSON, try to get text
+          try {
+            const textError = await response.text();
+            errorMessage = textError || errorMessage;
+          } catch (textError) {
+            console.error('Failed to parse error response:', textError);
+          }
+        }
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -234,6 +271,19 @@ export default function Home() {
   };
 
   // OLD generateAudio function removed - replaced with new workflow functions
+
+  /**
+   * Copy audio tag to clipboard with visual feedback
+   */
+  const copyToClipboard = async (tag: string) => {
+    try {
+      await navigator.clipboard.writeText(tag);
+      setCopiedTag(tag);
+      setTimeout(() => setCopiedTag(''), 2000); // Clear feedback after 2 seconds
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+    }
+  };
 
   /**
    * NEW WORKFLOW: Generate annotated script only (no audio)
@@ -566,12 +616,25 @@ export default function Home() {
                   ].map((item, index) => (
                     <button
                       key={index}
-                      onClick={() => navigator.clipboard.writeText(item.tag)}
-                      className="p-2 bg-white hover:bg-amber-50 border border-amber-200 hover:border-amber-300 rounded text-xs transition-colors duration-150 text-left"
+                      onClick={() => copyToClipboard(item.tag)}
+                      className={`p-2 border rounded text-xs transition-all duration-200 text-left relative ${
+                        copiedTag === item.tag 
+                          ? 'bg-green-100 border-green-300 text-green-800' 
+                          : 'bg-white hover:bg-amber-50 border-amber-200 hover:border-amber-300'
+                      }`}
                       title={`Click to copy: ${item.desc}`}
                     >
-                      <code className="font-mono text-amber-800 font-semibold">{item.tag}</code>
-                      <div className="text-gray-600 text-xs mt-1">{item.desc}</div>
+                      {copiedTag === item.tag && (
+                        <div className="absolute -top-2 -right-2 bg-green-500 text-white text-xs px-2 py-1 rounded-full animate-pulse">
+                          ✓ Copied!
+                        </div>
+                      )}
+                      <code className={`font-mono font-semibold ${
+                        copiedTag === item.tag ? 'text-green-800' : 'text-amber-800'
+                      }`}>{item.tag}</code>
+                      <div className={`text-xs mt-1 ${
+                        copiedTag === item.tag ? 'text-green-600' : 'text-gray-600'
+                      }`}>{item.desc}</div>
                     </button>
                   ))}
                 </div>
@@ -583,6 +646,57 @@ export default function Home() {
                 className="w-full h-80 p-4 border-2 border-yellow-200 rounded-lg resize-y focus:outline-none focus:border-yellow-400 text-gray-800 text-base leading-relaxed"
                 placeholder="Your processed text will appear here for editing..."
               />
+            </div>
+          )}
+
+          {/* Advanced Guide (Optional) - Moved below Annotated Script */}
+          {editableOutput && (
+            <div className="mb-8">
+              <button
+                onClick={() => setShowGuide(!showGuide)}
+                className="flex items-center justify-center gap-3 w-full p-3 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 border border-emerald-200 rounded-lg transition-all duration-200"
+              >
+                <BookOpen size={20} className="text-emerald-600" />
+                <span className="text-sm font-medium text-emerald-800">
+                  📖 Advanced Tips & Examples
+                </span>
+                {showGuide ? (
+                  <ChevronUp size={16} className="text-emerald-600" />
+                ) : (
+                  <ChevronDown size={16} className="text-emerald-600" />
+                )}
+              </button>
+              
+              {showGuide && (
+                <div className="mt-3 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg">
+                  <div className="space-y-4">
+                    <div className="p-3 bg-white border border-emerald-200 rounded-lg">
+                      <h5 className="font-semibold text-emerald-800 mb-2">💡 Pro Tips</h5>
+                      <ul className="text-sm text-gray-800 space-y-1">
+                        <li>• Start sentences with audio tags: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">[sighs] This is complicated</code></li>
+                        <li>• Use ellipses after key concepts: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">&quot;isolation...&quot;</code></li>
+                        <li>• Em-dashes for smooth transitions: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">&quot;scattered — but here&apos;s the thing&quot;</code></li>
+                        <li>• Let V3 handle natural speech - don&apos;t over-tag!</li>
+                        <li>• Trust punctuation for pacing over excessive tags</li>
+                      </ul>
+                    </div>
+                    
+                    <div className="p-3 bg-white border border-emerald-200 rounded-lg">
+                      <h5 className="font-semibold text-emerald-800 mb-2">📝 Example Transformations</h5>
+                      <div className="space-y-3 text-sm">
+                        <div>
+                          <div className="font-medium text-gray-800 mb-1">Before:</div>
+                          <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800 border">&quot;The Hermit. This is different.&quot;</code>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-800 mb-1">After:</div>
+                          <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800 border">&quot;[sighs] The Hermit... this one&apos;s different...&quot;</code>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -715,54 +829,7 @@ export default function Home() {
             </div>
           )}
 
-          {/* Advanced Guide (Optional) */}
-          <div className="mb-8">
-            <button
-              onClick={() => setShowGuide(!showGuide)}
-              className="flex items-center justify-center gap-3 w-full p-3 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 border border-emerald-200 rounded-lg transition-all duration-200"
-            >
-              <BookOpen size={20} className="text-emerald-600" />
-              <span className="text-sm font-medium text-emerald-800">
-                📖 Advanced Tips & Examples
-              </span>
-              {showGuide ? (
-                <ChevronUp size={16} className="text-emerald-600" />
-              ) : (
-                <ChevronDown size={16} className="text-emerald-600" />
-              )}
-            </button>
-            
-            {showGuide && (
-              <div className="mt-3 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg">
-                <div className="space-y-4">
-                  <div className="p-3 bg-white border border-emerald-200 rounded-lg">
-                    <h5 className="font-semibold text-emerald-800 mb-2">💡 Pro Tips</h5>
-                    <ul className="text-sm text-gray-800 space-y-1">
-                      <li>• Start sentences with audio tags: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">[sighs] This is complicated</code></li>
-                      <li>• Use ellipses after key concepts: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">&quot;isolation...&quot;</code></li>
-                      <li>• Em-dashes for smooth transitions: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">&quot;scattered — but here&apos;s the thing&quot;</code></li>
-                      <li>• Let V3 handle natural speech - don&apos;t over-tag!</li>
-                      <li>• Trust punctuation for pacing over excessive tags</li>
-                    </ul>
-                  </div>
-                  
-                  <div className="p-3 bg-white border border-emerald-200 rounded-lg">
-                    <h5 className="font-semibold text-emerald-800 mb-2">📝 Example Transformations</h5>
-                    <div className="space-y-3 text-sm">
-                      <div>
-                        <div className="font-medium text-gray-800 mb-1">Before:</div>
-                        <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800 border">&quot;The Hermit. This is different.&quot;</code>
-                      </div>
-                      <div>
-                        <div className="font-medium text-gray-800 mb-1">After:</div>
-                        <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800 border">&quot;[sighs] The Hermit... this one&apos;s different...&quot;</code>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+
 
           {/* Audio Player & Download */}
           {hasAudio && (
