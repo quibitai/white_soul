@@ -20,6 +20,16 @@ interface LintReport {
   };
 }
 
+interface VoiceVersion {
+  id: string;
+  version: number;
+  script: string;
+  audioUrl: string;
+  downloadUrl: string;
+  timestamp: Date;
+  metadata: unknown;
+}
+
 interface ProcessingState {
   status: 'idle' | 'preparing' | 'proofing' | 'synthesizing' | 'ready' | 'error';
   manifestId?: string;
@@ -44,6 +54,13 @@ interface ProcessingState {
   };
 }
 
+interface WorkflowState {
+  scriptStatus: 'idle' | 'generating' | 'ready' | 'error';
+  voiceStatus: 'idle' | 'generating' | 'ready' | 'error';
+  scriptError?: string;
+  voiceError?: string;
+}
+
 export default function Home() {
   const [text, setText] = useState('');
   const [state, setState] = useState<ProcessingState>({ status: 'idle' });
@@ -52,6 +69,14 @@ export default function Home() {
   const [editableOutput, setEditableOutput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  
+  // New workflow state
+  const [workflow, setWorkflow] = useState<WorkflowState>({ 
+    scriptStatus: 'idle', 
+    voiceStatus: 'idle' 
+  });
+  const [annotatedScript, setAnnotatedScript] = useState<string>('');
+  const [voiceVersions, setVoiceVersions] = useState<VoiceVersion[]>([]);
 
   // Set audio source when URL is available
   useEffect(() => {
@@ -208,73 +233,89 @@ export default function Home() {
     }
   };
 
-  /**
-   * Generates audio from text (using edited output if available)
-   */
-  const generateAudio = async () => {
-    const inputText = editableOutput || text;
-    if (!inputText.trim()) return;
+  // OLD generateAudio function removed - replaced with new workflow functions
 
-    // If user has edited the output, use it directly without reprocessing
-    if (editableOutput && editableOutput.trim() !== text.trim()) {
-      console.log('🎯 Using edited output directly (skipping reprocessing)');
-      console.log('📝 Edited text preview:', editableOutput.substring(0, 100) + '...');
+  /**
+   * NEW WORKFLOW: Generate annotated script only (no audio)
+   */
+  const generateAnnotatedScript = async () => {
+    if (!text.trim()) return;
+
+    setWorkflow({ ...workflow, scriptStatus: 'generating' });
+
+    try {
+      console.log('🚀 Generating annotated script only');
       
-      setState({ status: 'synthesizing', progress: 'Generating audio from your edited text...' });
-      
-      // Send edited text directly to synthesis without processing
-      const result = await synthesizeEditedText(editableOutput);
-      if (!result) {
-        setState({ status: 'error', error: 'Failed to generate audio from edited text.' });
+      const prepared = await prepareText(text);
+      if (!prepared) {
+        setWorkflow({ ...workflow, scriptStatus: 'error', scriptError: 'Failed to prepare script' });
         return;
       }
 
-      setState({
-        status: 'ready',
-        audioUrl: result.audioUrl,
-        downloadUrl: result.downloadUrl,
-        metadata: result.metadata,
+      const finalScript = prepared.processing?.finalOutput || text;
+      setAnnotatedScript(finalScript);
+      setEditableOutput(finalScript); // Keep compatibility with existing edit system
+      
+      setWorkflow({ ...workflow, scriptStatus: 'ready' });
+      console.log('✅ Annotated script generated successfully');
+
+    } catch (error) {
+      console.error('Script generation error:', error);
+      setWorkflow({ 
+        ...workflow, 
+        scriptStatus: 'error', 
+        scriptError: error instanceof Error ? error.message : 'Unknown error' 
       });
-      return;
     }
-
-    // First time generation - process the original text
-    setState({ status: 'preparing', progress: 'Preparing text with V3 processing...' });
-
-    const prepared = await prepareText(inputText);
-    if (!prepared) {
-      return;
-    }
-
-    setState({ 
-      status: 'synthesizing', 
-      progress: 'Generating audio with ElevenLabs V3...',
-      manifestId: prepared.manifestId,
-      report: prepared.report,
-      processing: prepared.processing,
-    });
-
-    const result = await synthesizeAudio(prepared.manifestId);
-    if (!result) {
-      setState({ status: 'error', error: 'Failed to generate audio.' });
-      return;
-    }
-
-    setState({
-      status: 'ready',
-      manifestId: prepared.manifestId,
-      report: prepared.report,
-      processing: prepared.processing,
-      audioUrl: result.audioUrl,
-      downloadUrl: result.downloadUrl,
-      metadata: result.metadata,
-    });
   };
 
   /**
-   * Plays the generated audio
+   * NEW WORKFLOW: Generate Angela's voice from annotated script
    */
+  const generateAngelasVoice = async () => {
+    const scriptToUse = editableOutput || annotatedScript;
+    if (!scriptToUse.trim()) return;
+
+    setWorkflow({ ...workflow, voiceStatus: 'generating' });
+
+    try {
+      console.log('🎵 Generating Angela\'s voice from script');
+      
+      // Use direct synthesis for edited scripts
+      const result = await synthesizeEditedText(scriptToUse);
+      if (!result) {
+        setWorkflow({ ...workflow, voiceStatus: 'error', voiceError: 'Failed to generate voice' });
+        return;
+      }
+
+      // Create new voice version
+      const newVersion: VoiceVersion = {
+        id: `v${String(voiceVersions.length + 1).padStart(2, '0')}`,
+        version: voiceVersions.length + 1,
+        script: scriptToUse,
+        audioUrl: result.audioUrl,
+        downloadUrl: result.downloadUrl,
+        timestamp: new Date(),
+        metadata: result.metadata
+      };
+
+      setVoiceVersions([...voiceVersions, newVersion]);
+      setWorkflow({ ...workflow, voiceStatus: 'ready' });
+      console.log(`✅ Angela's voice ${newVersion.id} generated successfully`);
+
+    } catch (error) {
+      console.error('Voice generation error:', error);
+      setWorkflow({ 
+        ...workflow, 
+        voiceStatus: 'error', 
+        voiceError: error instanceof Error ? error.message : 'Unknown error' 
+      });
+    }
+  };
+
   const isProcessing = ['preparing', 'proofing', 'synthesizing'].includes(state.status);
+  const isGeneratingScript = workflow.scriptStatus === 'generating';
+  const isGeneratingVoice = workflow.voiceStatus === 'generating';
   const hasAudio = state.status === 'ready' && state.audioUrl;
   const hasReport = state.report && (state.report.warnings.length > 0 || state.report.bans.length > 0);
 
@@ -439,7 +480,7 @@ export default function Home() {
           {/* Editable Final Output */}
           {editableOutput && (
             <div className="mb-6 p-6 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-2xl">
-              <h3 className="text-lg font-semibold text-amber-800 mb-4">✏️ Final Output - Edit for Fine-Tuning</h3>
+              <h3 className="text-lg font-semibold text-amber-800 mb-4">📝 Annotated Script - Edit for Fine-Tuning</h3>
               
               {/* Quick Punctuation Reference */}
               <div className="mb-4 p-3 bg-white/70 rounded-lg border border-yellow-300">
@@ -472,7 +513,7 @@ export default function Home() {
                 </div>
                 <div className="mt-2 pt-2 border-t border-yellow-200">
                   <div className="mb-2">
-                    <p className="text-xs font-medium text-amber-800 mb-1">Internal Pause System (Angela's Voice Config):</p>
+                    <p className="text-xs font-medium text-amber-800 mb-1">Internal Pause System (Angela&apos;s Voice Config):</p>
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 text-xs text-gray-600">
                       <span>Micro: 0.4s</span>
                       <span>Beat: 0.7s</span>
@@ -545,33 +586,134 @@ export default function Home() {
             </div>
           )}
 
-          {/* Generate Button */}
-          <div className="flex justify-center mb-8">
-            <button
-              onClick={generateAudio}
-              disabled={!(editableOutput || text).trim() || isProcessing}
-              className="flex items-center gap-4 px-12 py-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold text-xl rounded-2xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-            >
-              {isProcessing ? (
-                <>
-                  <Loader2 size={28} className="animate-spin" />
-                  PROCESSING...
-                </>
-              ) : (
-                <>
-                  <Play size={28} />
-                  GENERATE ANGELA&apos;S VOICE
-                </>
-              )}
-            </button>
+          {/* NEW WORKFLOW: Two-Step Generation */}
+          <div className="flex flex-col items-center gap-4 mb-8">
+            {/* Step 1: Generate Annotated Script */}
+            {workflow.scriptStatus === 'idle' && (
+              <button
+                onClick={generateAnnotatedScript}
+                disabled={!text.trim() || isGeneratingScript}
+                className="flex items-center gap-4 px-12 py-6 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold text-xl rounded-2xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                {isGeneratingScript ? (
+                  <>
+                    <Loader2 size={28} className="animate-spin" />
+                    GENERATING SCRIPT...
+                  </>
+                ) : (
+                  <>
+                    <BookOpen size={28} />
+                    GENERATE ANNOTATED SCRIPT
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* Step 2: Generate Angela's Voice */}
+            {workflow.scriptStatus === 'ready' && (
+              <div className="flex items-center gap-4">
+                <button
+                  onClick={generateAngelasVoice}
+                  disabled={!annotatedScript.trim() || isGeneratingVoice}
+                  className="flex items-center gap-4 px-12 py-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold text-xl rounded-2xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  title="🚀 ElevenLabs V3 Optimized: Applies Angela's natural pacing rules (ellipses, em-dashes, hesitations) + contextual audio tags"
+                >
+                  {isGeneratingVoice ? (
+                    <>
+                      <Loader2 size={28} className="animate-spin" />
+                      GENERATING VOICE...
+                    </>
+                  ) : (
+                    <>
+                      <Play size={28} />
+                      GENERATE ANGELA&apos;S VOICE
+                    </>
+                  )}
+                </button>
+                
+                {/* V3 Info Tooltip */}
+                <div className="group relative">
+                  <div className="w-6 h-6 bg-purple-100 hover:bg-purple-200 rounded-full flex items-center justify-center cursor-help transition-colors">
+                    <span className="text-purple-600 text-sm font-bold">?</span>
+                  </div>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-purple-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                    🚀 ElevenLabs V3 Optimized
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-purple-900"></div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Re-generate Button (for subsequent versions) */}
+            {voiceVersions.length > 0 && (
+              <button
+                onClick={generateAngelasVoice}
+                disabled={!annotatedScript.trim() || isGeneratingVoice}
+                className="flex items-center gap-4 px-8 py-4 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold text-lg rounded-xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                {isGeneratingVoice ? (
+                  <>
+                    <Loader2 size={24} className="animate-spin" />
+                    GENERATING v{String(voiceVersions.length + 1).padStart(2, '0')}...
+                  </>
+                ) : (
+                  <>
+                    <Play size={24} />
+                    RE-GENERATE ANGELA&apos;S VOICE
+                  </>
+                )}
+              </button>
+            )}
           </div>
 
-          {/* V3 Processing Info */}
-          <div className="mb-8 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-2xl text-center">
-            <p className="text-sm text-purple-700">
-              🚀 <strong>ElevenLabs V3 Optimized:</strong> Applies Angela&apos;s natural pacing rules (ellipses, em-dashes, hesitations) + contextual audio tags
-            </p>
-          </div>
+          {/* Voice Versions Display */}
+          {voiceVersions.length > 0 && (
+            <div className="mb-8 space-y-6">
+              {voiceVersions.map((version) => (
+                <div key={version.id} className="p-6 bg-gradient-to-r from-green-50 to-emerald-50 border-2 border-green-200 rounded-2xl">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-emerald-800">
+                      🎵 Angela&apos;s Voice Transmission {version.id}
+                    </h3>
+                    <div className="text-sm text-emerald-600">
+                      {version.timestamp.toLocaleTimeString()}
+                    </div>
+                  </div>
+                  
+                  {/* Audio Player */}
+                  <div className="mb-4 p-4 bg-white/70 rounded-lg border border-green-300">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-emerald-700">🎧 Audio Playback</span>
+                      <a
+                        href={version.downloadUrl}
+                        download={`angela-voice-${version.id}.mp3`}
+                        className="flex items-center gap-2 px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg transition-colors"
+                      >
+                        <Download size={16} />
+                        Download
+                      </a>
+                    </div>
+                    <audio 
+                      controls 
+                      src={version.audioUrl}
+                      className="w-full"
+                      preload="metadata"
+                    >
+                      Your browser does not support the audio element.
+                    </audio>
+                  </div>
+
+                  {/* Script Preview */}
+                  <div className="p-4 bg-white/70 rounded-lg border border-green-300">
+                    <h4 className="text-sm font-medium text-emerald-700 mb-2">📜 Script Used</h4>
+                    <div className="text-sm text-gray-700 bg-white p-3 rounded border max-h-32 overflow-y-auto">
+                      {version.script}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Advanced Guide (Optional) */}
           <div className="mb-8">
