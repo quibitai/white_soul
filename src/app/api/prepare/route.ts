@@ -265,85 +265,6 @@ export async function GET(): Promise<NextResponse> {
 }
 
 /**
- * Optimizes audio tags for ElevenLabs V3 by keeping only the most impactful tags
- * V3 performs better with 2-3 strategic tags rather than many tags
- */
-function optimizeAudioTagsForV3(text: string, _config: VoiceConfig): string {
-  console.log('🎯 Optimizing audio tags for V3 performance');
-  
-  // Extract all existing tags with their positions
-  const tagMatches = [...text.matchAll(/\[[\w\s]+\]/g)];
-  console.log(`📊 Found ${tagMatches.length} tags to optimize`);
-  
-  if (tagMatches.length <= 3) {
-    console.log('✅ Tag count already optimal, no changes needed');
-    return text;
-  }
-  
-  // Priority order for tag types (most impactful first)
-  const tagPriority: Record<string, number> = {
-    // Breathing and natural sounds - highest priority for pacing
-    'sighs': 10, 'exhales': 10, 'inhales': 9, 'breathes deeply': 9,
-    // Core emotional expressions - high priority
-    'thoughtful': 8, 'mysterious': 8, 'mystical': 7,
-    // Secondary emotions - medium priority  
-    'concerned': 6, 'worried': 5, 'confident': 5,
-    // Lower priority tags
-    'curious': 4, 'intrigued': 4, 'excited': 3, 'amazed': 3,
-    'whispers': 2, 'slowly': 2, 'chuckles': 1
-  };
-  
-  // Score and sort tags by importance
-  const scoredTags = tagMatches.map(match => {
-    const tag = match[0].replace(/[\[\]]/g, '').toLowerCase();
-    const priority = tagPriority[tag] || 0;
-    return {
-      match: match[0],
-      position: match.index || 0,
-      priority,
-      tag
-    };
-  }).sort((a, b) => b.priority - a.priority);
-  
-  // Keep top 3 most important tags, distributed throughout the text
-  const textLength = text.length;
-  const selectedTags = [];
-  
-  // Always keep the highest priority tag
-  if (scoredTags.length > 0) selectedTags.push(scoredTags[0]);
-  
-  // Add up to 2 more tags, preferring those spread throughout the text
-  for (let i = 1; i < scoredTags.length && selectedTags.length < 3; i++) {
-    const candidate = scoredTags[i];
-    const isWellSpaced = selectedTags.every(selected => 
-      Math.abs(candidate.position - selected.position) > textLength / 4
-    );
-    
-    if (isWellSpaced || selectedTags.length < 2) {
-      selectedTags.push(candidate);
-    }
-  }
-  
-  // Remove all tags first, then add back the selected ones
-  let optimizedText = text.replace(/\[[\w\s]+\]/g, '');
-  
-  // Add back selected tags in their original positions (adjusted for removals)
-  selectedTags.sort((a, b) => a.position - b.position);
-  let offset = 0;
-  
-  for (const selected of selectedTags) {
-    const insertPos = selected.position - offset;
-    optimizedText = optimizedText.slice(0, insertPos) + selected.match + optimizedText.slice(insertPos);
-    offset += selected.match.length;
-  }
-  
-  console.log(`✅ Optimized from ${tagMatches.length} to ${selectedTags.length} tags`);
-  console.log(`🎭 Kept tags: ${selectedTags.map(t => t.match).join(', ')}`);
-  
-  return optimizedText;
-}
-
-/**
  * V3 Pure implementation - No legacy V2 code, just clean text + strategic audio tags
  */
 async function processV3OptimizedMode(text: string, config: VoiceConfig, output: string) {
@@ -497,21 +418,15 @@ async function processV3EnhancedMode(text: string, config: VoiceConfig, output: 
     // Step 3: Strategic audio tags - contextual placement (respecting existing tags)
     console.log('🎭 Step 3: Strategic audio tag placement (preserving user tags)');
     
-    // Smart audio tag management - prevent overload for optimal V3 performance
-    const existingTags = (conversationalText.match(/\[[\w\s]+\]/g) || []);
-    const tagCount = existingTags.length;
+    // Check if user has already added audio tags - if so, skip automatic tagging
+    const existingTags = (conversationalText.match(/\[[\w\s]+\]/g) || []).length;
     let taggedText = conversationalText;
     
-    if (tagCount === 0) {
+    if (existingTags === 0) {
       console.log('🎭 No existing user tags found, applying contextual tags');
       taggedText = applyAudioTags(conversationalText, config);
-    } else if (tagCount <= 3) {
-      console.log(`🎭 Found ${tagCount} user tags (optimal range), preserving them without adding more`);
-      taggedText = conversationalText;
     } else {
-      console.log(`🎭 Found ${tagCount} user tags (too many for V3), optimizing for better performance`);
-      // Keep only the most important tags to prevent V3 overload
-      taggedText = optimizeAudioTagsForV3(conversationalText, config);
+      console.log(`🎭 Found ${existingTags} existing user tags, preserving them without adding more`);
     }
     
     console.log('🏷️ After audio tags:', taggedText.substring(0, 100) + '...');
