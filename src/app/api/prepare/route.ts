@@ -31,7 +31,7 @@ const PrepareRequestSchema = z.object({
   text: z.string().min(1, 'Text is required'),
   output: z.enum(['ssml', 'text']).default('text'), // Changed default to 'text' for V3
   preset: z.string().default('angela'),
-  processingMode: z.enum(['traditional', 'natural', 'v3_optimized', 'direct', 'v3_enhanced']).optional().default('v3_optimized'), // Added v3_enhanced mode
+  processingMode: z.enum(['traditional', 'natural', 'direct', 'v3_enhanced']).optional().default('v3_enhanced'), // Default to v3_enhanced for consistency
 });
 
 
@@ -95,10 +95,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Choose processing approach based on mode
     console.log('🔄 Processing mode decision:', { processingMode, text: text.substring(0, 50) + '...' });
     
-    if (processingMode === 'v3_optimized') {
-      console.log('🚀 Using V3 Optimized Processing Mode (Streamlined)');
-      return await processV3OptimizedMode(text, config, output);
-    }
+    // v3_optimized mode removed - all processing now uses v3_enhanced for consistency
     
     if (processingMode === 'direct') {
       console.log('🎯 Using Direct Mode (No Processing - User Edited Text)');

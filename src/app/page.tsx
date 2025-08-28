@@ -131,7 +131,7 @@ export default function Home() {
           text: textToProcess,
           output: 'text',
           preset: 'angela',
-          processingMode: 'v3_optimized',
+          processingMode: 'v3_enhanced',
         }),
       });
 
