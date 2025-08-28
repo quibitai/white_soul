@@ -428,9 +428,7 @@ async function processV3EnhancedMode(text: string, config: VoiceConfig, output: 
     console.log(`🎯 Audio tags in enhanced text: ${audioTagMatches.length} tags found`);
     console.log('🎭 Audio tags:', audioTagMatches.slice(0, 5));
     
-    const manifestId = generateManifestId();
-    await saveManifest(manifestId, {
-      chunks: pureChunks,
+    const manifestId = await saveManifest(pureChunks, {
       config,
       metadata: {
         processingMode: 'v3_enhanced',
