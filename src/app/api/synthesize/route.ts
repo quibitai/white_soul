@@ -16,7 +16,6 @@ import {
   synthesizeChunks,
   concatAudioBuffers,
   validateElevenLabsConfig,
-  selectOptimalModel,
   getModelOptimizedSettings,
   isV3Model,
   getV3StabilityValue,
@@ -224,7 +223,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 /**
  * Analyzes content characteristics to determine optimal model selection
  */
-function analyzeContentForModelSelection(textChunks: { id: number; body: string; charCount: number; estSeconds: number }[], manifest: any) {
+function analyzeContentForModelSelection(textChunks: { id: number; body: string; charCount: number; estSeconds: number }[], _manifest: unknown) {
   console.log('📊 Content Analysis Debug:', {
     chunkCount: textChunks.length,
     sampleChunk: textChunks[0] ? {
@@ -276,7 +275,7 @@ function analyzeContentForModelSelection(textChunks: { id: number; body: string;
 /**
  * Selects the best model based on content analysis
  */
-function selectModelForContent(stats: any, config: VoiceConfig, fallbackModel: string) {
+function selectModelForContent(stats: { totalEstSeconds: number; chunkCount: number; avgChunkSize: number; audioTagCount: number }, config: VoiceConfig, fallbackModel: string) {
   console.log('🎯 Content Analysis for Model Selection:', {
     duration: `${Math.round(stats.totalEstSeconds / 60)}m ${Math.round(stats.totalEstSeconds % 60)}s`,
     chunks: stats.chunkCount,

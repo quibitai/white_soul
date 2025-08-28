@@ -147,7 +147,7 @@ function segmentNaturally(text: string): string[] {
 /**
  * Determines if there should be a natural break after a sentence
  */
-function isNaturalBreakPoint(currentSentence: string, nextSentence?: string, index?: number, totalSentences?: number): boolean {
+function isNaturalBreakPoint(currentSentence: string, nextSentence?: string): boolean {
   const current = currentSentence.toLowerCase();
   const next = nextSentence?.toLowerCase() || '';
   

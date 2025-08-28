@@ -53,7 +53,7 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
     seed, 
     previousText, 
     nextText, 
-    pronunciationDictionaries = [], // Temporarily unused
+    _pronunciationDictionaries = [], // Temporarily unused
     enableSSMLParsing = false,
     speed,
     quality,
