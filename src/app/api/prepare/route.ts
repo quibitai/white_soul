@@ -408,22 +408,38 @@ async function processV3EnhancedMode(text: string, config: VoiceConfig, output: 
     console.log('🎭 V3 Enhanced Pipeline - User edits + Angela\'s voice rules');
     console.log('📝 User-edited text:', text.substring(0, 100) + '...');
     
-    // Step 1: Apply Angela's conversational style (but preserve user's punctuation choices)
-    console.log('🗣️ Step 1: Applying Angela\'s conversational characteristics');
-    const conversationalText = applyV3ConversationalStyle(text, config);
+    // Step 1: Apply Angela's pacing rules (preserve user edits but ensure proper timing)
+    console.log('🔧 Step 1: Applying Angela\'s pacing rules (gentle enhancement)');
+    const pacedText = applyV3NativePacing(text, config);
+    console.log('✅ After V3 pacing:', pacedText.substring(0, 100) + '...');
+    
+    // Step 2: Apply Angela's conversational style (but preserve user's punctuation choices)
+    console.log('🗣️ Step 2: Applying Angela\'s conversational characteristics');
+    const conversationalText = applyV3ConversationalStyle(pacedText, config);
     console.log('✅ After conversational style:', conversationalText.substring(0, 100) + '...');
     
-    // Step 2: Strategic audio tags - contextual placement (respecting existing tags)
-    console.log('🎭 Step 2: Strategic audio tag placement (preserving user tags)');
-    const taggedText = applyAudioTags(conversationalText, config);
+    // Step 3: Strategic audio tags - contextual placement (respecting existing tags)
+    console.log('🎭 Step 3: Strategic audio tag placement (preserving user tags)');
+    
+    // Check if user has already added audio tags - if so, skip automatic tagging
+    const existingTags = (conversationalText.match(/\[[\w\s]+\]/g) || []).length;
+    let taggedText = conversationalText;
+    
+    if (existingTags === 0) {
+      console.log('🎭 No existing user tags found, applying contextual tags');
+      taggedText = applyAudioTags(conversationalText, config);
+    } else {
+      console.log(`🎭 Found ${existingTags} existing user tags, preserving them without adding more`);
+    }
+    
     console.log('🏷️ After audio tags:', taggedText.substring(0, 100) + '...');
     
-    // Step 3: Pure V3 chunking - NO markup, preserve natural text flow
-    console.log('✂️ Step 3: Pure V3 chunking (no markup added)');
+    // Step 4: Pure V3 chunking - NO markup, preserve natural text flow
+    console.log('✂️ Step 4: Pure V3 chunking (no markup added)');
     const pureChunks = createPureV3Chunks(taggedText, config);
     console.log(`📦 Created ${pureChunks.length} enhanced chunks (avg: ${Math.round(pureChunks.reduce((sum, c) => sum + c.charCount, 0) / pureChunks.length)} chars each)`);
     
-    // Step 4: Validation - count audio tags
+    // Step 5: Validation - count audio tags
     const audioTagMatches = taggedText.match(/\[[\w\s]+\]/g) || [];
     console.log(`🎯 Audio tags in enhanced text: ${audioTagMatches.length} tags found`);
     console.log('🎭 Audio tags:', audioTagMatches.slice(0, 5));
