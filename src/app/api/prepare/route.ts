@@ -564,8 +564,8 @@ function applyV3ConversationalStyle(text: string, config: VoiceConfig): string {
     });
   }
   
-  // Clean up any double spaces that may have been introduced
-  styled = styled.replace(/\s{2,}/g, ' ').trim();
+  // Clean up excessive spaces while preserving intentional double spaces for pacing
+  styled = styled.replace(/\s{3,}/g, '  ').trim();
   
   return styled;
 }
