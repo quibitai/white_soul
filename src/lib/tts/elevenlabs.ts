@@ -53,7 +53,7 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
     seed, 
     previousText, 
     nextText, 
-    _pronunciationDictionaries = [], // Temporarily unused
+    pronunciationDictionaries = [], // Temporarily unused
     enableSSMLParsing = false,
     speed,
     quality,
@@ -90,7 +90,7 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
     sanitizedText = text.trim()
       .replace(/\bhashtag\s+\w+\b/gi, '') // Remove any hashtag artifacts
       .replace(/\bmeta\b(?!\s+\w)/gi, '') // Remove standalone meta words
-      .replace(/\s{2,}/g, ' ') // Normalize excessive whitespace but preserve single spaces
+      .replace(/\s{3,}/g, '  ') // Normalize excessive whitespace but preserve double spaces for pacing
       .replace(/\n{3,}/g, '\n\n'); // Normalize excessive newlines but preserve paragraph breaks
       
     console.log('✨ V3 Pure: Preserving natural punctuation for V3 pacing');

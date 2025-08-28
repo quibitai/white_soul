@@ -80,7 +80,7 @@ export default function TestVoicePage() {
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900">🎤 Angela Voice Test</h1>
             <p className="mt-2 text-gray-600">
-              Test Angela&apos;s raw voice without any processing or audio tags
+              Test Angela's raw voice without any processing or audio tags
             </p>
           </div>
 
@@ -164,7 +164,7 @@ export default function TestVoicePage() {
                   onClick={() => handleSuggestionClick(suggestion)}
                   className="text-left px-3 py-2 text-sm bg-gray-50 hover:bg-gray-100 rounded border border-gray-200 transition-colors"
                 >
-                  &quot;{suggestion}&quot;
+                  "{suggestion}"
                 </button>
               ))}
             </div>
@@ -179,7 +179,7 @@ export default function TestVoicePage() {
               <div>style: 0.0 (Not used in v3)</div>
               <div>speaker_boost: true (Enhanced clarity)</div>
               <div>speed: 0.85 (Contemplative pace)</div>
-              <div>quality: &quot;enhanced&quot;</div>
+              <div>quality: "enhanced"</div>
             </div>
             <p className="text-xs text-gray-500 mt-2">
               Settings loaded directly from angela-voice.yaml configuration

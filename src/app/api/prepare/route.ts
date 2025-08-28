@@ -193,8 +193,7 @@ export async function GET(): Promise<NextResponse> {
 /**
  * V3 Pure implementation - No legacy V2 code, just clean text + strategic audio tags
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function processV3OptimizedMode(text: string, config: VoiceConfig, _output: string) {
+async function processV3OptimizedMode(text: string, config: VoiceConfig, output: string) {
   try {
     console.log('🚀 V3 Pure Pipeline - Clean text with natural punctuation for V3 pacing');
     console.log('📝 Original text:', text.substring(0, 100) + '...');
@@ -229,12 +228,7 @@ async function processV3OptimizedMode(text: string, config: VoiceConfig, _output
       report: { 
         warnings: [],
         bans: [],
-        stats: { 
-          words: taggedText.split(' ').length, 
-          sentences: taggedText.split(/[.!?]+/).length - 1,
-          groupAddressRatio: 0,
-          consecutiveGroupAddress: 0
-        }
+        stats: { words: taggedText.split(' ').length, sentences: taggedText.split(/[.!?]+/).length - 1 }
       },
       configVersion: 'v3-pure-2025',
       originalText: text,
@@ -274,8 +268,7 @@ async function processV3OptimizedMode(text: string, config: VoiceConfig, _output
  * Direct processing mode - minimal processing for user-edited text
  * Skips all transformations and uses text as-is
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function processDirectMode(text: string, config: VoiceConfig, _output: string) {
+async function processDirectMode(text: string, config: VoiceConfig, output: string) {
   try {
     console.log('🎯 Direct Mode - Using edited text as-is (no processing)');
     console.log('📝 Direct text preview:', text.substring(0, 100) + '...');
@@ -296,12 +289,7 @@ async function processDirectMode(text: string, config: VoiceConfig, _output: str
       report: { 
         warnings: [],
         bans: [],
-        stats: { 
-          words: text.split(' ').length, 
-          sentences: text.split(/[.!?]+/).length - 1,
-          groupAddressRatio: 0,
-          consecutiveGroupAddress: 0
-        }
+        stats: { words: text.split(' ').length, sentences: text.split(/[.!?]+/).length - 1 }
       },
       configVersion: 'direct-2025',
       originalText: text,
@@ -338,7 +326,7 @@ async function processDirectMode(text: string, config: VoiceConfig, _output: str
  * Angela V3 Unified Processing Mode - Single best-practice pipeline
  * Applies Angela's voice rules with full audio tag support and consistent pacing
  */
-async function processAngelaV3Mode(text: string, config: VoiceConfig, _output: string) {
+async function processAngelaV3Mode(text: string, config: VoiceConfig, output: string) {
   try {
     console.log('🎭 Angela V3 Unified Pipeline - Best-practice processing with full audio tag support');
     console.log('📝 Input text:', text.substring(0, 100) + '...');
@@ -382,7 +370,7 @@ async function processAngelaV3Mode(text: string, config: VoiceConfig, _output: s
     const manifestId = await saveManifest(pureChunks, {
       config,
       metadata: {
-        processingMode: 'v3_enhanced',
+        processingMode: 'angela_v3',
         originalLength: text.length,
         processedLength: taggedText.length,
         audioTags: audioTagMatches.length,
@@ -547,7 +535,7 @@ function applyV3ConversationalStyle(text: string, config: VoiceConfig): string {
   const targetYouGuysCount = Math.floor(youMatches.length * config.conversational_realism.you_guys_ratio);
   
   let youGuysApplied = 0;
-  styled = styled.replace(/\byou\b(?!\s+guys)(?!\s+are\s+(going|gonna|about))/gi, (match) => {
+  styled = styled.replace(/\byou\b(?!\s+guys)(?!\s+are\s+(going|gonna|about))/gi, (match, offset) => {
     if (youGuysApplied < targetYouGuysCount && Math.random() < 0.4) {
       youGuysApplied++;
       return 'you guys';
@@ -559,7 +547,7 @@ function applyV3ConversationalStyle(text: string, config: VoiceConfig): string {
   const hesitationCues = config.speech_patterns?.hesitation_cues || ['yeah', 'like', 'so yeah', 'I mean'];
   
   // Add hesitation before significant insights
-  styled = styled.replace(/\.\s+(This|That|Here's|What|And)\s/gi, (match, word) => {
+  styled = styled.replace(/\.\s+(This|That|Here's|What|And)\s/gi, (match, word, offset) => {
     if (Math.random() < config.conversational_realism.verbal_hesitation_ratio) {
       const cue = hesitationCues[Math.floor(Math.random() * hesitationCues.length)];
       return `. ${cue}, ${word.toLowerCase()} `;
@@ -586,8 +574,7 @@ function applyV3ConversationalStyle(text: string, config: VoiceConfig): string {
  * Natural processing mode for ElevenLabs v3
  * Simplified pipeline focused on natural text and audio tags
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function processNaturalMode(text: string, config: VoiceConfig, _output: string) {
+async function processNaturalMode(text: string, config: VoiceConfig, output: string) {
   try {
     console.log('🎭 v3 Comprehensive Pipeline - Starting full processing');
     console.log('📝 Original text:', text.substring(0, 100) + '...');
