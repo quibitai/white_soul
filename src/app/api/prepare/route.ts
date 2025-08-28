@@ -31,7 +31,7 @@ const PrepareRequestSchema = z.object({
   text: z.string().min(1, 'Text is required'),
   output: z.enum(['ssml', 'text']).default('text'), // Changed default to 'text' for V3
   preset: z.string().default('angela'),
-  processingMode: z.enum(['traditional', 'natural', 'v3_optimized', 'direct']).optional().default('v3_optimized'), // Added direct mode
+  processingMode: z.enum(['traditional', 'natural', 'v3_optimized', 'direct', 'v3_enhanced']).optional().default('v3_optimized'), // Added v3_enhanced mode
 });
 
 
@@ -103,6 +103,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (processingMode === 'direct') {
       console.log('🎯 Using Direct Mode (No Processing - User Edited Text)');
       return await processDirectMode(text, config, output);
+    }
+    
+    if (processingMode === 'v3_enhanced') {
+      console.log('🎯 Using V3 Enhanced Mode (User Edited + Angela\'s Rules)');
+      return await processV3EnhancedMode(text, config, output);
     }
     
     if (processingMode === 'natural') {
@@ -391,6 +396,77 @@ async function processDirectMode(text: string, config: VoiceConfig, output: stri
   } catch (error) {
     console.error('Direct processing error:', error);
     return NextResponse.json({ error: 'Failed to process text in direct mode' }, { status: 500 });
+  }
+}
+
+/**
+ * V3 Enhanced Mode - Apply Angela's rules to user-edited text
+ * This preserves user edits while ensuring Angela's voice characteristics are maintained
+ */
+async function processV3EnhancedMode(text: string, config: VoiceConfig, output: string) {
+  try {
+    console.log('🎭 V3 Enhanced Pipeline - User edits + Angela\'s voice rules');
+    console.log('📝 User-edited text:', text.substring(0, 100) + '...');
+    
+    // Step 1: Apply Angela's conversational style (but preserve user's punctuation choices)
+    console.log('🗣️ Step 1: Applying Angela\'s conversational characteristics');
+    const conversationalText = applyV3ConversationalStyle(text, config);
+    console.log('✅ After conversational style:', conversationalText.substring(0, 100) + '...');
+    
+    // Step 2: Strategic audio tags - contextual placement (respecting existing tags)
+    console.log('🎭 Step 2: Strategic audio tag placement (preserving user tags)');
+    const taggedText = applyAudioTags(conversationalText, config);
+    console.log('🏷️ After audio tags:', taggedText.substring(0, 100) + '...');
+    
+    // Step 3: Pure V3 chunking - NO markup, preserve natural text flow
+    console.log('✂️ Step 3: Pure V3 chunking (no markup added)');
+    const pureChunks = createPureV3Chunks(taggedText, config);
+    console.log(`📦 Created ${pureChunks.length} enhanced chunks (avg: ${Math.round(pureChunks.reduce((sum, c) => sum + c.charCount, 0) / pureChunks.length)} chars each)`);
+    
+    // Step 4: Validation - count audio tags
+    const audioTagMatches = taggedText.match(/\[[\w\s]+\]/g) || [];
+    console.log(`🎯 Audio tags in enhanced text: ${audioTagMatches.length} tags found`);
+    console.log('🎭 Audio tags:', audioTagMatches.slice(0, 5));
+    
+    const manifestId = generateManifestId();
+    await saveManifest(manifestId, {
+      chunks: pureChunks,
+      config,
+      metadata: {
+        processingMode: 'v3_enhanced',
+        originalLength: text.length,
+        processedLength: taggedText.length,
+        audioTags: audioTagMatches.length,
+        timestamp: new Date().toISOString()
+      }
+    });
+
+    const stats = {
+      words: taggedText.split(' ').length,
+      sentences: taggedText.split(/[.!?]+/).length - 1,
+      chunks: pureChunks.length,
+      estSeconds: pureChunks.reduce((sum, chunk) => sum + chunk.estSeconds, 0)
+    };
+
+    return NextResponse.json({
+      manifestId,
+      chunks: pureChunks,
+      report: {
+        warnings: [],
+        bans: []
+      },
+      processing: {
+        originalText: text,
+        normalized: conversationalText,
+        finalOutput: taggedText,
+        audioTags: audioTagMatches,
+        stats
+      }
+    });
+
+  } catch (error) {
+    console.error('V3 Enhanced processing error:', error);
+    return NextResponse.json({ error: 'Failed to process text in V3 enhanced mode' }, { status: 500 });
   }
 }
 

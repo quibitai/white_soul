@@ -238,7 +238,7 @@ export default function Home() {
           text: editedText,
           output: 'text',
           preset: 'angela',
-          processingMode: 'direct', // New mode that skips all processing
+          processingMode: 'v3_enhanced', // New mode that applies Angela's rules to user edits
         }),
       });
 
@@ -723,24 +723,28 @@ export default function Home() {
               </button>
             )}
 
-            {/* Step 2: Generate Angela's Voice */}
+            {/* Generate/Re-generate Angela's Voice Button */}
             {workflow.scriptStatus === 'ready' && (
               <div className="flex items-center gap-4">
                 <button
                   onClick={generateAngelasVoice}
                   disabled={!annotatedScript.trim() || isGeneratingVoice}
-                  className="flex items-center gap-4 px-12 py-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold text-xl rounded-2xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className={`flex items-center gap-4 px-12 py-6 font-bold text-xl rounded-2xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:from-gray-400 disabled:to-gray-500 text-white ${
+                    voiceVersions.length === 0 
+                      ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
+                      : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
+                  }`}
                   title="🚀 ElevenLabs V3 Optimized: Applies Angela's natural pacing rules (ellipses, em-dashes, hesitations) + contextual audio tags"
                 >
                   {isGeneratingVoice ? (
                     <>
                       <Loader2 size={28} className="animate-spin" />
-                      GENERATING VOICE...
+                      {voiceVersions.length === 0 ? 'GENERATING VOICE...' : `GENERATING v${String(voiceVersions.length + 1).padStart(2, '0')}...`}
                     </>
                   ) : (
                     <>
                       <Play size={28} />
-                      GENERATE ANGELA&apos;S VOICE
+                      {voiceVersions.length === 0 ? 'GENERATE ANGELA\'S VOICE' : 'RE-GENERATE ANGELA\'S VOICE'}
                     </>
                   )}
                 </button>
@@ -756,27 +760,6 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            )}
-
-            {/* Re-generate Button (for subsequent versions) */}
-            {voiceVersions.length > 0 && (
-              <button
-                onClick={generateAngelasVoice}
-                disabled={!annotatedScript.trim() || isGeneratingVoice}
-                className="flex items-center gap-4 px-8 py-4 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold text-lg rounded-xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-              >
-                {isGeneratingVoice ? (
-                  <>
-                    <Loader2 size={24} className="animate-spin" />
-                    GENERATING v{String(voiceVersions.length + 1).padStart(2, '0')}...
-                  </>
-                ) : (
-                  <>
-                    <Play size={24} />
-                    RE-GENERATE ANGELA&apos;S VOICE
-                  </>
-                )}
-              </button>
             )}
           </div>
 
@@ -820,9 +803,12 @@ export default function Home() {
                   {/* Script Preview */}
                   <div className="p-4 bg-white/70 rounded-lg border border-green-300">
                     <h4 className="text-sm font-medium text-emerald-700 mb-2">📜 Script Used</h4>
-                    <div className="text-sm text-gray-700 bg-white p-3 rounded border max-h-32 overflow-y-auto">
-                      {version.script}
-                    </div>
+                    <textarea
+                      value={version.script}
+                      readOnly
+                      className="w-full h-32 p-3 bg-white border border-green-200 rounded resize-y text-sm text-gray-700 leading-relaxed focus:outline-none focus:border-green-400"
+                      placeholder="Script content..."
+                    />
                   </div>
                 </div>
               ))}
