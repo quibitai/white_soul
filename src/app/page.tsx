@@ -131,7 +131,7 @@ export default function Home() {
           text: textToProcess,
           output: 'text',
           preset: 'angela',
-          processingMode: 'v3_enhanced',
+          processingMode: 'angela_v3',
         }),
       });
 
@@ -238,7 +238,7 @@ export default function Home() {
           text: editedText,
           output: 'text',
           preset: 'angela',
-          processingMode: 'v3_enhanced', // New mode that applies Angela's rules to user edits
+          processingMode: 'angela_v3', // Unified Angela V3 processing mode
         }),
       });
 

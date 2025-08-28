@@ -31,7 +31,7 @@ const PrepareRequestSchema = z.object({
   text: z.string().min(1, 'Text is required'),
   output: z.enum(['ssml', 'text']).default('text'), // Changed default to 'text' for V3
   preset: z.string().default('angela'),
-  processingMode: z.enum(['traditional', 'natural', 'direct', 'v3_enhanced']).optional().default('v3_enhanced'), // Default to v3_enhanced for consistency
+  processingMode: z.enum(['angela_v3']).optional().default('angela_v3'), // Single unified processing mode
 });
 
 
@@ -92,86 +92,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     // Load voice configuration
     const config = await loadConfig();
 
-    // Choose processing approach based on mode
-    console.log('🔄 Processing mode decision:', { processingMode, text: text.substring(0, 50) + '...' });
-    
-    // v3_optimized mode removed - all processing now uses v3_enhanced for consistency
-    
-    if (processingMode === 'direct') {
-      console.log('🎯 Using Direct Mode (No Processing - User Edited Text)');
-      return await processDirectMode(text, config, output);
-    }
-    
-    if (processingMode === 'v3_enhanced') {
-      console.log('🎯 Using V3 Enhanced Mode (User Edited + Angela\'s Rules)');
-      return await processV3EnhancedMode(text, config, output);
-    }
-    
-    if (processingMode === 'natural') {
-      console.log('🌿 Using Natural Processing Mode');
-      return await processNaturalMode(text, config, output);
-    }
-    
-    console.log('⚙️ Using Traditional Processing Mode');
+    // Single unified processing mode - Angela V3 Best Practices
+    console.log('🎭 Using Angela V3 Unified Processing Mode');
+    return await processAngelaV3Mode(text, config, output);
 
-    // Traditional processing pipeline
-    const normalized = normalize(text, config);
-    const report = lint(normalized, config);
-    const withMacros = applyMacros(normalized, config);
-    const conversational = applyConversationalRealism(withMacros, config);
-    const wst2Formatted = applyWST2Rules(conversational, config);
-    const withAudioTags = applyAudioTags(wst2Formatted, config); // NEW: Audio tags processing
-    const sanitized = sanitizeForTTS(withAudioTags, config);
-    const chunks = chunk(sanitized, config);
-
-    // Convert to SSML or keep as text based on output preference
-    const processedChunks: TextChunk[] = chunks.map((chunk) => ({
-      ...chunk,
-      body: output === 'ssml' && config.emphasis.use_ssml 
-        ? toSSML(chunk.body, config) 
-        : chunk.body,
-    }));
-
-    // Save manifest for later synthesis
-    const manifestId = await saveManifest(processedChunks, {
-      report,
-      configVersion: '2025-01-27',
-      originalText: text,
-    });
-
-    // Prepare response with processing annotations
-    const response: PrepareResponse = {
-      manifestId,
-      chunks: processedChunks.map(chunk => ({
-        id: chunk.id,
-        body: chunk.body,
-        estSeconds: chunk.estSeconds,
-      })),
-      report,
-      processing: {
-        originalText: text,
-        normalized: normalized,
-        withMacros: withMacros,
-        conversational: conversational,
-        wst2Formatted: wst2Formatted,
-        withAudioTags: withAudioTags, // NEW: Audio tags processing step
-        sanitized: sanitized,
-        finalOutput: processedChunks.map(chunk => chunk.body).join('\n\n'),
-        pipeline: [
-          { step: 'normalize', description: 'Text normalization and cleanup' },
-          { step: 'lint', description: 'Style analysis and warnings' },
-          { step: 'macros', description: 'Pause and emphasis macro insertion' },
-          { step: 'conversational', description: 'Conversational realism enhancements' },
-          { step: 'wst2', description: 'WST2 Studio Speech Rules formatting' },
-          { step: 'audio_tags', description: 'ElevenLabs audio tags for emotional delivery' }, // NEW
-          { step: 'sanitize', description: 'TTS artifact removal and cleanup' },
-          { step: 'chunk', description: 'Text segmentation for TTS' },
-          { step: 'ssml', description: output === 'ssml' ? 'SSML conversion applied' : 'Text output (no SSML conversion)' },
-        ],
-      },
-    };
-
-    return NextResponse.json(response);
+    // This should never be reached - all processing goes through processAngelaV3Mode
+    throw new Error('Legacy processing pipeline removed - use Angela V3 unified mode');
 
   } catch (error) {
     console.error('Error in /api/prepare:', error);
@@ -397,13 +323,13 @@ async function processDirectMode(text: string, config: VoiceConfig, output: stri
 }
 
 /**
- * V3 Enhanced Mode - Apply Angela's rules to user-edited text
- * This preserves user edits while ensuring Angela's voice characteristics are maintained
+ * Angela V3 Unified Processing Mode - Single best-practice pipeline
+ * Applies Angela's voice rules with full audio tag support and consistent pacing
  */
-async function processV3EnhancedMode(text: string, config: VoiceConfig, output: string) {
+async function processAngelaV3Mode(text: string, config: VoiceConfig, output: string) {
   try {
-    console.log('🎭 V3 Enhanced Pipeline - User edits + Angela\'s voice rules');
-    console.log('📝 User-edited text:', text.substring(0, 100) + '...');
+    console.log('🎭 Angela V3 Unified Pipeline - Best-practice processing with full audio tag support');
+    console.log('📝 Input text:', text.substring(0, 100) + '...');
     
     // Step 1: Apply Angela's pacing rules (preserve user edits but ensure proper timing)
     console.log('🔧 Step 1: Applying Angela\'s pacing rules (gentle enhancement)');

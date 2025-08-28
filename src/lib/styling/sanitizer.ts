@@ -6,6 +6,45 @@
 import { VoiceConfig } from './config';
 
 /**
+ * Generates a dynamic audio tag pattern from Angela's voice configuration
+ * This ensures all configured audio tags are preserved during sanitization
+ */
+function generateAudioTagPattern(config: VoiceConfig): RegExp {
+  const allTags: string[] = [];
+  
+  // Extract all emotional tags from config
+  if (config.audio_tags?.emotional_tags) {
+    Object.values(config.audio_tags.emotional_tags).forEach(tagArray => {
+      if (Array.isArray(tagArray)) {
+        tagArray.forEach(tag => {
+          // Remove brackets and escape special regex characters
+          const cleanTag = tag.replace(/[\[\]]/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          allTags.push(cleanTag);
+        });
+      }
+    });
+  }
+  
+  // Extract ambient effects if they exist
+  if (config.audio_tags?.ambient_effects) {
+    Object.values(config.audio_tags.ambient_effects).forEach(tagArray => {
+      if (Array.isArray(tagArray)) {
+        tagArray.forEach(tag => {
+          const cleanTag = tag.replace(/[\[\]]/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          allTags.push(cleanTag);
+        });
+      }
+    });
+  }
+  
+  // Create pattern that matches any of the configured tags
+  const tagPattern = allTags.length > 0 ? allTags.join('|') : 'no-valid-tags';
+  console.log(`🎭 Generated dynamic audio tag pattern for ${allTags.length} tags:`, allTags.slice(0, 5));
+  
+  return new RegExp(`\\[(${tagPattern})\\]`, 'gi');
+}
+
+/**
  * Sanitizes text to prevent TTS from speaking unwanted metadata or artifacts
  * @param {string} text - Input text to sanitize
  * @param {VoiceConfig} config - Voice configuration
@@ -67,8 +106,8 @@ function removeMetadataArtifacts(text: string): string {
   cleaned = cleaned.replace(/\bmeta\b(?!\s+\w)/gi, ''); // Remove standalone "meta" word
   
   // Remove square brackets EXCEPT for ElevenLabs v3 audio tags
-  // Preserve all v3-compatible audio tags using a more flexible pattern
-  const audioTagPattern = /\[(laughs?|giggles?|chuckles?|whispers?|sighs?|exhales?|takes?\s+a\s+breath|curious|intrigued|excited|amazed|thoughtful|mysterious|knowing|emphasizes?|with\s+conviction|soft\s+wind|gentle\s+chimes|rustling\s+cards|flowing\s+water|distant\s+thunder|night\s+sounds|bell\s+rings?\s+softly|candle\s+flickers?|crystal\s+resonance)\]/gi;
+  // Generate dynamic pattern from Angela's voice configuration
+  const audioTagPattern = generateAudioTagPattern(config);
   const audioTags: string[] = [];
   
   // Extract and temporarily store audio tags
