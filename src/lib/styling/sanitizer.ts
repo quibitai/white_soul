@@ -61,6 +61,11 @@ function removeMetadataArtifacts(text: string): string {
   // Remove JSON-like artifacts
   cleaned = cleaned.replace(/\{[^}]*\}/g, '');
   
+  // Remove hashtag-like artifacts that might be spoken
+  cleaned = cleaned.replace(/\bhashtag\s+\w+\b/gi, '');
+  cleaned = cleaned.replace(/\#\w+/g, '');
+  cleaned = cleaned.replace(/\bmeta\b(?!\s+\w)/gi, ''); // Remove standalone "meta" word
+  
   // Remove square brackets EXCEPT for ElevenLabs v3 audio tags
   // Preserve all v3-compatible audio tags using a more flexible pattern
   const audioTagPattern = /\[(laughs?|giggles?|chuckles?|whispers?|sighs?|exhales?|takes?\s+a\s+breath|curious|intrigued|excited|amazed|thoughtful|mysterious|knowing|emphasizes?|with\s+conviction|soft\s+wind|gentle\s+chimes|rustling\s+cards|flowing\s+water|distant\s+thunder|night\s+sounds|bell\s+rings?\s+softly|candle\s+flickers?|crystal\s+resonance)\]/gi;
@@ -98,15 +103,21 @@ function removeModelIncompatibleTags(text: string, config: VoiceConfig): string 
     console.log('🎯 v3 Model detected: removing v2 pause tags and converting to natural flow');
     
     // Step 1: Remove v2-style pause tags entirely (v3 handles pacing naturally)
-    cleaned = cleaned.replace(/<pause,\d+>/g, '');
+    cleaned = cleaned.replace(/<pause[,:]\d+>/g, '');
     
     // Step 2: Remove SSML breaks entirely (v3 handles pacing naturally) 
     cleaned = cleaned.replace(/<break\s+time="[0-9.]+s?"\s*\/>/g, '');
     
-    // Step 3: Remove any remaining XML-style tags that v3 doesn't support
-    cleaned = cleaned.replace(/<(?!\/?(pause|break))[^>]*>/g, '');
+    // Step 3: Remove emphasis tags entirely (v3 handles emphasis naturally)
+    cleaned = cleaned.replace(/<emphasis:[^>]*>([^<]*)<\/emphasis>/g, '$1');
     
-    // Step 4: Clean up malformed punctuation created by tag removal
+    // Step 4: Remove rate tags entirely (v3 handles rate changes naturally)
+    cleaned = cleaned.replace(/<rate:[^>]*>([^<]*)<\/rate>/g, '$1');
+    
+    // Step 5: Remove any remaining XML-style tags that v3 doesn't support (except audio tags)
+    cleaned = cleaned.replace(/<(?!\/?\[)[^>]*>/g, '');
+    
+    // Step 6: Clean up malformed punctuation created by tag removal
     cleaned = cleanupMalformedPunctuation(cleaned);
     
     // Log audio tags that should be preserved

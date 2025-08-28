@@ -70,7 +70,42 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
 
   // Get model capabilities and sanitize text
   const modelCaps = getModelCapabilities(modelId);
-  const sanitizedText = sanitizeForModel(text.trim(), modelId);
+  
+  // Log the raw text received before any processing
+  console.log('🔍 ElevenLabs Raw Input Text:', {
+    preview: text.substring(0, 200) + '...',
+    length: text.length,
+    hasMarkup: /<[^>]+>/.test(text) || /\[[^\]]+\]/.test(text),
+    suspiciousContent: text.match(/hashtag|meta/gi) || [],
+    audioTags: (text.match(/\[[^\]]+\]/g) || []).length
+  });
+  
+  // For V3 models, detect if input is truly clean (no markup except audio tags)
+  let sanitizedText;
+  const hasLegacyMarkup = text.includes('<pause') || text.includes('<emphasis') || text.includes('<rate') || text.includes('<break') || text.includes('<speak');
+  
+  if (isV3Model(modelId) && !hasLegacyMarkup) {
+    console.log('🚀 V3 Pure Input: Clean text detected, minimal processing');
+    // Absolutely minimal processing for pure V3 input
+    sanitizedText = text.trim()
+      .replace(/\bhashtag\s+\w+\b/gi, '') // Remove any hashtag artifacts
+      .replace(/\bmeta\b(?!\s+\w)/gi, '') // Remove standalone meta words
+      .replace(/\s{2,}/g, ' ') // Normalize excessive whitespace but preserve single spaces
+      .replace(/\n{3,}/g, '\n\n'); // Normalize excessive newlines but preserve paragraph breaks
+      
+    console.log('✨ V3 Pure: Preserving natural punctuation for V3 pacing');
+  } else {
+    console.log('🔧 Legacy/Markup Input: Full sanitization needed');
+    sanitizedText = sanitizeForModel(text.trim(), modelId);
+  }
+  
+  // Log the final text being sent to API
+  console.log('🚀 Final Text to ElevenLabs:', {
+    preview: sanitizedText.substring(0, 200) + '...',
+    length: sanitizedText.length,
+    audioTags: (sanitizedText.match(/\[[^\]]+\]/g) || []).length,
+    remainingMarkup: (sanitizedText.match(/<[^>]+>/g) || []).length
+  });
   
   // Get recommended voice settings for the model
   const recommendedSettings = getRecommendedSettings(modelId);
@@ -140,6 +175,7 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   // Enhanced debug logging for v3 models
   if (isV3) {
     const audioTagsFound = sanitizedText.match(/\[[^\]]+\]/g) || [];
+    const isPureInput = !hasLegacyMarkup;
     console.log('🎭 ElevenLabs v3 Enhanced:', {
       modelId,
       endpoint: 'text-to-speech',
@@ -149,9 +185,11 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
       audioTagsFound: audioTagsFound.length,
       audioTagsList: audioTagsFound.slice(0, 5), // Show first 5 tags
       enableSSMLParsing: requestBody.enable_ssml_parsing,
+      inputType: isPureInput ? 'Pure V3 (natural punctuation preserved)' : 'Legacy (SSML converted)',
       optimizations: {
         contextParametersSkipped: 'v3 uses internal context understanding',
         stabilityMode: 'Creative mode for emotional expressiveness',
+        punctuationPreserved: isPureInput,
         voiceSettings: finalVoiceSettings
       }
     });

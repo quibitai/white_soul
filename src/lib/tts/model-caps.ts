@@ -129,15 +129,24 @@ export function sanitizeForModel(text: string, modelId: string): string {
     return sanitized.replace(/\s+/g, ' ').trim();
   }
 
+  // Remove hashtag/meta artifacts first (critical fix)
+  sanitized = sanitized.replace(/\bhashtag\s+\w+\b/gi, '');
+  sanitized = sanitized.replace(/\#\w+/g, '');
+  sanitized = sanitized.replace(/\bmeta\b(?!\s+\w)/gi, '');
+
   // Remove prosody tags if not supported
   if (!caps.supportsProsody) {
     sanitized = sanitized.replace(/<prosody[^>]*>(.*?)<\/prosody>/g, '$1');
   }
 
-  // Remove emphasis tags if not supported
+  // Remove emphasis tags if not supported (all variants)
   if (!caps.supportsEmphasis) {
     sanitized = sanitized.replace(/<emphasis[^>]*>(.*?)<\/emphasis>/g, '$1');
+    sanitized = sanitized.replace(/<emphasis:[^>]*>([^<]*)<\/emphasis>/g, '$1');
   }
+  
+  // Remove rate tags (v3 doesn't use these)
+  sanitized = sanitized.replace(/<rate:[^>]*>([^<]*)<\/rate>/g, '$1');
 
   // Handle break tags
   if (caps.supportsBreaks) {
@@ -149,8 +158,15 @@ export function sanitizeForModel(text: string, modelId: string): string {
       return `<break time="${clampedSeconds}s"/>`;
     });
 
-    // Handle legacy pause macros and convert to breaks
+    // Handle legacy pause macros and convert to breaks (multiple formats)
     sanitized = sanitized.replace(/<pause:(\d+)>/g, (match, ms) => {
+      const clampedMs = Math.min(parseInt(ms), caps.maxBreakTime);
+      const seconds = (clampedMs / 1000).toFixed(clampedMs % 1000 === 0 ? 0 : 1);
+      return `<break time="${seconds}s"/>`;
+    });
+    
+    // Handle comma-separated pause format <pause,1200>
+    sanitized = sanitized.replace(/<pause,(\d+)>/g, (match, ms) => {
       const clampedMs = Math.min(parseInt(ms), caps.maxBreakTime);
       const seconds = (clampedMs / 1000).toFixed(clampedMs % 1000 === 0 ? 0 : 1);
       return `<break time="${seconds}s"/>`;
@@ -159,6 +175,7 @@ export function sanitizeForModel(text: string, modelId: string): string {
     // Remove all break tags if not supported
     sanitized = sanitized.replace(/<break[^>]*\/?>/g, '');
     sanitized = sanitized.replace(/<pause:\d+>/g, '');
+    sanitized = sanitized.replace(/<pause,\d+>/g, ''); // Remove comma format too
   }
 
   // Apply two-space rule before breaks at line ends
@@ -166,6 +183,14 @@ export function sanitizeForModel(text: string, modelId: string): string {
 
   // Clean up extra whitespace
   sanitized = sanitized.replace(/\s+/g, ' ').trim();
+  
+  // Final cleanup: remove any remaining unrecognized tags (except audio tags)
+  sanitized = sanitized.replace(/<(?!\/?(speak|break|prosody)\b)[^>]*>/g, '');
+  sanitized = sanitized.replace(/<\/(?!speak|prosody)\w+>/g, ''); // Remove closing tags
+  
+  // Remove any lingering artifacts
+  sanitized = sanitized.replace(/\bhashtag\s+\w+\b/gi, '');
+  sanitized = sanitized.replace(/\bmeta\b(?!\s+\w)/gi, '');
 
   // Ensure proper SSML wrapping if using SSML
   if (caps.supportsSSML && sanitized.includes('<')) {

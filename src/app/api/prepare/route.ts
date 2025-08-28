@@ -29,9 +29,9 @@ import { saveManifest } from '@/lib/store';
  */
 const PrepareRequestSchema = z.object({
   text: z.string().min(1, 'Text is required'),
-  output: z.enum(['ssml', 'text']).default('ssml'),
+  output: z.enum(['ssml', 'text']).default('text'), // Changed default to 'text' for V3
   preset: z.string().default('angela'),
-  processingMode: z.enum(['traditional', 'natural']).optional().default('traditional'),
+  processingMode: z.enum(['traditional', 'natural', 'v3_optimized', 'direct']).optional().default('v3_optimized'), // Added direct mode
 });
 
 
@@ -94,6 +94,16 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Choose processing approach based on mode
     console.log('🔄 Processing mode decision:', { processingMode, text: text.substring(0, 50) + '...' });
+    
+    if (processingMode === 'v3_optimized') {
+      console.log('🚀 Using V3 Optimized Processing Mode (Streamlined)');
+      return await processV3OptimizedMode(text, config, output);
+    }
+    
+    if (processingMode === 'direct') {
+      console.log('🎯 Using Direct Mode (No Processing - User Edited Text)');
+      return await processDirectMode(text, config, output);
+    }
     
     if (processingMode === 'natural') {
       console.log('🌿 Using Natural Processing Mode');
@@ -250,6 +260,301 @@ export async function GET(): Promise<NextResponse> {
   };
 
   return NextResponse.json(documentation);
+}
+
+/**
+ * V3 Pure implementation - No legacy V2 code, just clean text + strategic audio tags
+ */
+async function processV3OptimizedMode(text: string, config: VoiceConfig, output: string) {
+  try {
+    console.log('🚀 V3 Pure Pipeline - Clean text with natural punctuation for V3 pacing');
+    console.log('📝 Original text:', text.substring(0, 100) + '...');
+    
+    // Step 1: Apply Angela's pacing rules through natural punctuation for V3
+    console.log('🔧 Step 1: Applying Angela\'s pacing rules via V3-compatible punctuation');
+    const pacedText = applyV3NativePacing(text, config);
+    console.log('✅ After V3 pacing:', pacedText.substring(0, 100) + '...');
+    
+    // Step 2: Apply conversational realism (Angela's voice characteristics)
+    console.log('🗣️ Step 2: Applying Angela\'s conversational style');
+    const conversationalText = applyV3ConversationalStyle(pacedText, config);
+    console.log('✅ After conversational style:', conversationalText.substring(0, 100) + '...');
+    
+    // Step 3: Strategic audio tags - contextual placement
+    console.log('🎭 Step 3: Strategic audio tag placement');
+    const taggedText = applyAudioTags(conversationalText, config);
+    console.log('🏷️ After audio tags:', taggedText.substring(0, 100) + '...');
+    
+    // Step 4: Pure V3 chunking - NO markup, preserve natural text flow
+    console.log('✂️ Step 4: Pure V3 chunking (no markup added)');
+    const pureChunks = createPureV3Chunks(taggedText, config);
+    console.log(`📦 Created ${pureChunks.length} pure chunks (avg: ${Math.round(pureChunks.reduce((sum, c) => sum + c.charCount, 0) / pureChunks.length)} chars each)`);
+    
+    // Step 5: Validation - count audio tags
+    const audioTagMatches = taggedText.match(/\[[\w\s]+\]/g) || [];
+    console.log(`🎯 Audio tags in final text: ${audioTagMatches.length} tags found`);
+    console.log('🎭 Audio tags:', audioTagMatches.slice(0, 5));
+    
+    // Generate manifest
+    const manifestId = await saveManifest(pureChunks, {
+      report: { 
+        warnings: [],
+        bans: [],
+        stats: { words: taggedText.split(' ').length, sentences: taggedText.split(/[.!?]+/).length - 1 }
+      },
+      configVersion: 'v3-pure-2025',
+      originalText: text,
+    });
+
+    return NextResponse.json({
+      manifestId,
+      chunks: pureChunks,
+      report: {
+        warnings: [],
+        bans: []
+      },
+      processing: {
+        originalText: text,
+        normalized: pacedText,
+        withAudioTags: taggedText,
+        finalOutput: taggedText,
+        audioTags: audioTagMatches,
+        chunkCount: pureChunks.length,
+        avgChunkSize: Math.round(pureChunks.reduce((sum, c) => sum + c.charCount, 0) / pureChunks.length),
+        pipeline: [
+          { step: 'v3_native_pacing', description: 'Apply Angela\'s pacing rules via natural punctuation' },
+          { step: 'conversational_style', description: 'Apply Angela\'s conversational voice characteristics' },
+          { step: 'strategic_audio_tags', description: 'Contextual audio tags for emotional delivery' },
+          { step: 'pure_v3_chunking', description: 'Clean chunks with no markup added' }
+        ]
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ V3 pure processing error:', error);
+    return NextResponse.json({ error: 'Failed to process text with V3 pure pipeline' }, { status: 500 });
+  }
+}
+
+/**
+ * Direct processing mode - minimal processing for user-edited text
+ * Skips all transformations and uses text as-is
+ */
+async function processDirectMode(text: string, config: VoiceConfig, output: string) {
+  try {
+    console.log('🎯 Direct Mode - Using edited text as-is (no processing)');
+    console.log('📝 Direct text preview:', text.substring(0, 100) + '...');
+    
+    // Create chunks directly from the edited text without any processing
+    const directChunks = createPureV3Chunks(text, config);
+    console.log(`📦 Created ${directChunks.length} direct chunks (avg: ${Math.round(directChunks.reduce((sum, c) => sum + c.charCount, 0) / directChunks.length)} chars each)`);
+    
+    // Count any existing audio tags in the edited text
+    const audioTagMatches = text.match(/\[[\w\s]+\]/g) || [];
+    console.log(`🎯 Audio tags in edited text: ${audioTagMatches.length} tags found`);
+    if (audioTagMatches.length > 0) {
+      console.log('🎭 Audio tags:', audioTagMatches.slice(0, 5));
+    }
+    
+    // Generate manifest
+    const manifestId = await saveManifest(directChunks, {
+      report: { 
+        warnings: [],
+        bans: [],
+        stats: { words: text.split(' ').length, sentences: text.split(/[.!?]+/).length - 1 }
+      },
+      configVersion: 'direct-2025',
+      originalText: text,
+    });
+
+    return NextResponse.json({
+      manifestId,
+      chunks: directChunks,
+      report: {
+        warnings: [],
+        bans: []
+      },
+      processing: {
+        originalText: text,
+        normalized: text, // No normalization in direct mode
+        finalOutput: text, // Use text as-is
+        audioTags: audioTagMatches,
+        stats: {
+          words: text.split(' ').length,
+          sentences: text.split(/[.!?]+/).length - 1,
+          chunks: directChunks.length,
+          estSeconds: directChunks.reduce((sum, chunk) => sum + chunk.estSeconds, 0)
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Direct processing error:', error);
+    return NextResponse.json({ error: 'Failed to process text in direct mode' }, { status: 500 });
+  }
+}
+
+/**
+ * Pure V3 chunking - creates clean chunks with NO markup added
+ * Preserves natural punctuation and spacing for V3's built-in pacing
+ */
+function createPureV3Chunks(text: string, config: VoiceConfig): Array<{
+  id: number;
+  body: string;
+  charCount: number;
+  estSeconds: number;
+}> {
+  const maxChars = config.chunking.max_chars || 2200;
+  const minChars = config.chunking.min_chars || 900;
+  
+  // Split on natural boundaries - sentences and paragraphs
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const chunks: Array<{ id: number; body: string; charCount: number; estSeconds: number }> = [];
+  let currentChunk = '';
+  let chunkId = 0;
+  
+  for (const sentence of sentences) {
+    const testChunk = currentChunk ? currentChunk + ' ' + sentence : sentence;
+    
+    if (testChunk.length <= maxChars) {
+      currentChunk = testChunk;
+    } else {
+      // Finalize current chunk if it meets minimum
+      if (currentChunk && currentChunk.length >= minChars) {
+        chunks.push({
+          id: chunkId++,
+          body: currentChunk.trim(),
+          charCount: currentChunk.length,
+          estSeconds: estimateSeconds(currentChunk),
+        });
+      }
+      currentChunk = sentence;
+    }
+  }
+  
+  // Add final chunk
+  if (currentChunk.trim()) {
+    chunks.push({
+      id: chunkId,
+      body: currentChunk.trim(),
+      charCount: currentChunk.length,
+      estSeconds: estimateSeconds(currentChunk),
+    });
+  }
+  
+  return chunks;
+}
+
+/**
+ * Estimate duration based on word count and natural speech rate
+ */
+function estimateSeconds(text: string): number {
+  const words = text.split(/\s+/).length;
+  const wpm = 135; // From config
+  return Math.round((words / wpm) * 60 * 10) / 10;
+}
+
+/**
+ * Apply Angela's pacing rules using V3-compatible natural punctuation
+ * Converts specific timing requirements to strategic punctuation patterns
+ */
+function applyV3NativePacing(text: string, config: VoiceConfig): string {
+  let paced = text;
+  
+  console.log('⏱️ Applying Angela\'s pacing timing via natural punctuation');
+  
+  // Angela's timing rules (from config):
+  // micro: 400ms - very slight hesitation
+  // beat: 700ms - micro-beat for rhythmic control  
+  // minor: 1200ms - after punchlines, pivots, reflection
+  // shift: 1800ms - emotional shift, paragraph break
+  // impact: 2300ms - impact line landing
+  // major: 3500ms - major mood shift, breath reset
+  
+  // Apply strategic ellipses for contemplative pauses (minor timing: 1200ms)
+  // Target: after significant statements, before insights
+  paced = paced.replace(/(card|cards)\./gi, '$1...');
+  paced = paced.replace(/\b(different|shift|change)\./gi, '$1...');
+  paced = paced.replace(/\b(listen|look|see|notice)\s/gi, '$1... ');
+  
+  // ENHANCED: Longer pauses with multiple ellipses (impact timing: 2300ms)
+  paced = paced.replace(/\b(pause|wait|think|consider)\./gi, '$1...');
+  paced = paced.replace(/\.\s+(So|Now|Here's the thing|And here's what)\s/gi, '... $1 ');
+  
+  // Apply em-dashes for emotional shifts and emphasis (shift timing: 1800ms)
+  // Replace some periods with em-dashes for dramatic pauses
+  paced = paced.replace(/\.\s+(But|And|Yet|Still|Now)\s/gi, ' — $1 ');
+  paced = paced.replace(/\.\s+(This is|That's|Here's)\s/gi, ' — $1 ');
+  
+  // ENHANCED: Double em-dashes for major mood shifts (major timing: 3500ms)
+  paced = paced.replace(/\.\s+(So here's|The thing is|What's happening)\s/gi, ' —— $1 ');
+  
+  // Add subtle pauses after rhetorical questions (beat timing: 700ms)
+  paced = paced.replace(/\?(\s+[A-Z])/g, '?  $1');
+  
+  // ENHANCED: Longer paragraph breaks for major mood shifts
+  paced = paced.replace(/\n\n+/g, '\n\n\n');
+  
+  // REMOVED: Automatic card name spacing - cards already have natural pauses
+  // paced = paced.replace(/\b(High Priestess|The Hermit|The Star|Ten of Wands)\b/gi, ' $1... ');
+  
+  // ENHANCED: Extended pauses at sentence endings that need reflection
+  paced = paced.replace(/\.\s+(Because|Since|When|If|As|While)\s/gi, '... $1 ');
+  
+  // Normalize excessive spaces while preserving intentional pauses
+  paced = paced.replace(/\s{3,}/g, '  '); // Max double space for natural pause
+  paced = paced.trim();
+  
+  return paced;
+}
+
+/**
+ * Apply Angela's conversational style characteristics for V3
+ * Implements her specific voice patterns and hesitation cues
+ */
+function applyV3ConversationalStyle(text: string, config: VoiceConfig): string {
+  let styled = text;
+  
+  console.log('🗣️ Applying Angela\'s conversational characteristics');
+  
+  // Apply "you guys" ratio (35% of "you" should become "you guys")
+  const youMatches = styled.match(/\byou\b(?!\s+guys)/gi) || [];
+  const targetYouGuysCount = Math.floor(youMatches.length * config.conversational_realism.you_guys_ratio);
+  
+  let youGuysApplied = 0;
+  styled = styled.replace(/\byou\b(?!\s+guys)(?!\s+are\s+(going|gonna|about))/gi, (match, offset) => {
+    if (youGuysApplied < targetYouGuysCount && Math.random() < 0.4) {
+      youGuysApplied++;
+      return 'you guys';
+    }
+    return match;
+  });
+  
+  // Add verbal hesitation cues (35% of natural pause points)
+  const hesitationCues = config.speech_patterns?.hesitation_cues || ['yeah', 'like', 'so yeah', 'I mean'];
+  
+  // Add hesitation before significant insights
+  styled = styled.replace(/\.\s+(This|That|Here's|What|And)\s/gi, (match, word, offset) => {
+    if (Math.random() < config.conversational_realism.verbal_hesitation_ratio) {
+      const cue = hesitationCues[Math.floor(Math.random() * hesitationCues.length)];
+      return `. ${cue}, ${word.toLowerCase()} `;
+    }
+    return match;
+  });
+  
+  // Apply mystical vocabulary grounding (if enabled)
+  if (config.conversational_realism.mystical_vocabulary) {
+    const replacements = config.speech_patterns?.mystical_replacements || {};
+    Object.entries(replacements).forEach(([mystical, grounded]) => {
+      const regex = new RegExp(mystical, 'gi');
+      styled = styled.replace(regex, grounded);
+    });
+  }
+  
+  // Clean up any double spaces that may have been introduced
+  styled = styled.replace(/\s{2,}/g, ' ').trim();
+  
+  return styled;
 }
 
 /**

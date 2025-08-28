@@ -7,7 +7,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Upload, Play, Download, AlertCircle, CheckCircle, Loader2, Code } from 'lucide-react';
+import { Upload, Play, Download, AlertCircle, Loader2, BookOpen, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface LintReport {
   warnings: string[];
@@ -48,8 +48,8 @@ export default function Home() {
   const [text, setText] = useState('');
   const [state, setState] = useState<ProcessingState>({ status: 'idle' });
   const [showReport, setShowReport] = useState(false);
-  const [showProcessing, setShowProcessing] = useState(false);
-  const [processingMode, setProcessingMode] = useState<'traditional' | 'natural'>('natural');
+  const [showGuide, setShowGuide] = useState(false);
+  const [editableOutput, setEditableOutput] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
 
@@ -85,25 +85,27 @@ export default function Home() {
   };
 
   /**
-   * Processes text through the preparation pipeline
+   * Processes text through the V3 preparation pipeline
    */
-  const prepareText = async (): Promise<{ 
+  const prepareText = async (inputText?: string): Promise<{ 
     manifestId: string; 
     report: LintReport; 
     processing?: ProcessingState['processing'] 
   } | null> => {
+    const textToProcess = inputText || text;
+    
     try {
-      console.log('🚀 Starting text preparation with mode:', processingMode);
-      console.log('📝 Input text preview:', text.substring(0, 100) + '...');
+      console.log('🚀 Starting V3 text preparation');
+      console.log('📝 Input text preview:', textToProcess.substring(0, 100) + '...');
       
       const response = await fetch('/api/prepare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          text,
-          output: 'ssml',
+          text: textToProcess,
+          output: 'text',
           preset: 'angela',
-          processingMode,
+          processingMode: 'v3_optimized',
         }),
       });
 
@@ -113,14 +115,17 @@ export default function Home() {
       }
 
       const data = await response.json();
-      console.log('✅ Text preparation complete:', {
+      console.log('✅ V3 text preparation complete:', {
         manifestId: data.manifestId,
-        processingMode: processingMode, // Use the mode we sent
         hasAudioTags: (data.processing?.finalOutput || data.processing?.finalText || '').includes('['),
         finalTextPreview: (data.processing?.finalOutput || data.processing?.finalText || 'No processed text found').substring(0, 150) + '...',
         audioTags: data.processing?.audioTags || [],
-        fullProcessing: data.processing // Debug: see full structure
       });
+      
+      // Update editable output only if it's not already set (first time processing)
+      if (data.processing?.finalOutput && !editableOutput) {
+        setEditableOutput(data.processing.finalOutput);
+      }
       
       return { 
         manifestId: data.manifestId, 
@@ -128,7 +133,8 @@ export default function Home() {
         processing: data.processing 
       };
     } catch (error) {
-      console.error('Preparation error:', error);
+      console.error('V3 preparation error:', error);
+      setState({ status: 'error', error: error instanceof Error ? error.message : 'Unknown error' });
       return null;
     }
   };
@@ -167,60 +173,82 @@ export default function Home() {
   };
 
   /**
-   * Generates 30-second proof audio
+   * Synthesizes audio directly from edited text (bypasses processing)
    */
-  const generateProof = async () => {
-    if (!text.trim()) return;
+  const synthesizeEditedText = async (editedText: string) => {
+    try {
+      console.log('🎯 Direct synthesis from edited text');
+      console.log('📝 Text preview:', editedText.substring(0, 100) + '...');
+      
+      // Create a minimal manifest directly from edited text
+      const response = await fetch('/api/prepare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: editedText,
+          output: 'text',
+          preset: 'angela',
+          processingMode: 'direct', // New mode that skips all processing
+        }),
+      });
 
-    setState({ status: 'preparing', progress: 'Preparing text...' });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to prepare edited text');
+      }
 
-    const prepared = await prepareText();
-    if (!prepared) {
-      setState({ status: 'error', error: 'Failed to prepare text for synthesis.' });
-      return;
+      const data = await response.json();
+      console.log('✅ Direct preparation complete for edited text');
+      
+      // Now synthesize using the manifest
+      return await synthesizeAudio(data.manifestId);
+    } catch (error) {
+      console.error('Direct synthesis error:', error);
+      return null;
     }
-
-    setState({ 
-      status: 'proofing', 
-      progress: 'Generating proof audio...',
-      manifestId: prepared.manifestId,
-      report: prepared.report,
-      processing: prepared.processing,
-    });
-
-    const result = await synthesizeAudio(prepared.manifestId);
-    if (!result) {
-      setState({ status: 'error', error: 'Failed to generate proof audio.' });
-      return;
-    }
-
-    setState({
-      status: 'ready',
-      manifestId: prepared.manifestId,
-      report: prepared.report,
-      processing: prepared.processing, // Preserve processing data
-      audioUrl: result.audioUrl,
-      downloadUrl: result.downloadUrl,
-    });
   };
 
   /**
-   * Generates full audio
+   * Generates audio from text (using edited output if available)
    */
-  const generateFull = async () => {
-    if (!text.trim()) return;
+  const generateAudio = async () => {
+    const inputText = editableOutput || text;
+    if (!inputText.trim()) return;
 
-    setState({ status: 'preparing', progress: 'Preparing text...' });
+    // If user has edited the output, use it directly without reprocessing
+    if (editableOutput && editableOutput.trim() !== text.trim()) {
+      console.log('🎯 Using edited output directly (skipping reprocessing)');
+      console.log('📝 Edited text preview:', editableOutput.substring(0, 100) + '...');
+      
+      setState({ status: 'synthesizing', progress: 'Generating audio from your edited text...' });
+      
+      // Send edited text directly to synthesis without processing
+      const result = await synthesizeEditedText(editableOutput);
+      if (!result) {
+        setState({ status: 'error', error: 'Failed to generate audio from edited text.' });
+        return;
+      }
 
-    const prepared = await prepareText();
+      setState({
+        status: 'ready',
+        audioUrl: result.audioUrl,
+        downloadUrl: result.downloadUrl,
+        metadata: result.metadata,
+      });
+      return;
+    }
+
+    // First time generation - process the original text
+    setState({ status: 'preparing', progress: 'Preparing text with V3 processing...' });
+
+    const prepared = await prepareText(inputText);
     if (!prepared) {
-      setState({ status: 'error', error: 'Failed to prepare text for synthesis.' });
       return;
     }
 
     setState({ 
       status: 'synthesizing', 
-      progress: 'Generating full audio...',
+      progress: 'Generating audio with ElevenLabs V3...',
       manifestId: prepared.manifestId,
       report: prepared.report,
       processing: prepared.processing,
@@ -228,7 +256,7 @@ export default function Home() {
 
     const result = await synthesizeAudio(prepared.manifestId);
     if (!result) {
-      setState({ status: 'error', error: 'Failed to generate full audio.' });
+      setState({ status: 'error', error: 'Failed to generate audio.' });
       return;
     }
 
@@ -236,9 +264,10 @@ export default function Home() {
       status: 'ready',
       manifestId: prepared.manifestId,
       report: prepared.report,
-      processing: prepared.processing, // Preserve processing data
+      processing: prepared.processing,
       audioUrl: result.audioUrl,
       downloadUrl: result.downloadUrl,
+      metadata: result.metadata,
     });
   };
 
@@ -407,151 +436,190 @@ export default function Home() {
             </div>
           )}
 
-          {/* Processing Annotations */}
-          {state.processing && (
-            <div className="mb-8">
-              <button
-                onClick={() => setShowProcessing(!showProcessing)}
-                className="flex items-center gap-3 text-lg font-semibold text-indigo-700 hover:text-indigo-800 transition-colors"
-              >
-                <Code size={20} />
-                PROCESSING PIPELINE (ElevenLabs Output)
-              </button>
+          {/* Editable Final Output */}
+          {editableOutput && (
+            <div className="mb-6 p-6 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-2xl">
+              <h3 className="text-lg font-semibold text-amber-800 mb-4">✏️ Final Output - Edit for Fine-Tuning</h3>
               
-              {showProcessing && (
-                <div className="mt-6 space-y-6">
-                  {/* Pipeline Steps */}
-                  <div className="p-6 bg-indigo-50 border-2 border-indigo-200 rounded-2xl">
-                    <h4 className="text-xl font-bold text-indigo-800 mb-4">🔄 PROCESSING STEPS</h4>
-                    <div className="space-y-3">
-                      {state.processing.pipeline.map((step, index) => (
-                        <div key={step.step} className="flex items-center gap-3">
-                          <span className="w-8 h-8 bg-indigo-600 text-white rounded-full flex items-center justify-center text-sm font-bold">
-                            {index + 1}
-                          </span>
-                          <div>
-                            <span className="font-semibold text-indigo-800 capitalize">{step.step}</span>
-                            <p className="text-indigo-600 text-sm">{step.description}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Text Transformations */}
-                  <div className="grid gap-4">
-                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                      <h5 className="font-bold text-gray-800 mb-2">📝 ORIGINAL TEXT</h5>
-                      <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
-                        {state.processing.originalText}
-                      </pre>
-                    </div>
-
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <h5 className="font-bold text-blue-800 mb-2">🔧 AFTER MACROS</h5>
-                      <pre className="text-sm text-blue-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
-                        {state.processing.withMacros}
-                      </pre>
-                    </div>
-
-                    <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                      <h5 className="font-bold text-green-800 mb-2">💬 AFTER CONVERSATIONAL</h5>
-                      <pre className="text-sm text-green-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
-                        {state.processing.conversational}
-                      </pre>
-                    </div>
-
-                    <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                      <h5 className="font-bold text-purple-800 mb-2">🎭 AFTER WST2 RULES</h5>
-                      <pre className="text-sm text-purple-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
-                        {state.processing.wst2Formatted}
-                      </pre>
-                    </div>
-
-                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                      <h5 className="font-bold text-amber-800 mb-2">🎵 AFTER AUDIO TAGS</h5>
-                      <pre className="text-sm text-amber-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
-                        {state.processing.withAudioTags}
-                      </pre>
-                    </div>
-
-                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                      <h5 className="font-bold text-red-800 mb-2">🧹 AFTER SANITIZATION</h5>
-                      <pre className="text-sm text-red-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
-                        {state.processing.sanitized}
-                      </pre>
-                    </div>
-
-                    <div className="p-4 bg-orange-50 border-2 border-orange-400 rounded-lg">
-                      <h5 className="font-bold text-orange-800 mb-2">🎯 FINAL OUTPUT (Sent to ElevenLabs)</h5>
-                      <pre className="text-sm text-orange-700 whitespace-pre-wrap font-mono bg-white p-3 rounded border overflow-x-auto">
-                        {state.processing.finalOutput}
-                      </pre>
-                    </div>
-                  </div>
+              {/* Quick Punctuation Reference */}
+              <div className="mb-4 p-3 bg-white/70 rounded-lg border border-yellow-300">
+                <h4 className="text-sm font-semibold text-amber-800 mb-2">⏱️ Complete Timing Reference</h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-1 text-xs text-gray-700">
+                  {/* Basic Punctuation */}
+                  <span><code className="bg-gray-100 px-1 rounded">.</code> Period = natural end</span>
+                  <span><code className="bg-gray-100 px-1 rounded">?</code> Question = ~0.7s pause</span>
+                  <span><code className="bg-gray-100 px-1 rounded">,</code> Comma = micro pause</span>
+                  
+                  {/* Ellipses & Pauses */}
+                  <span><code className="bg-gray-100 px-1 rounded">...</code> Ellipses = ~1.2s pause</span>
+                  <span><code className="bg-gray-100 px-1 rounded">word...</code> After keywords = contemplative</span>
+                  <span><code className="bg-gray-100 px-1 rounded">... Word</code> Before transitions = ~1.2s</span>
+                  
+                  {/* Em-dashes */}
+                  <span><code className="bg-gray-100 px-1 rounded">—</code> Em-dash = ~1.8s shift</span>
+                  <span><code className="bg-gray-100 px-1 rounded">——</code> Double em-dash = ~3.5s major shift</span>
+                  <span><code className="bg-gray-100 px-1 rounded">— But</code> Emotional transitions</span>
+                  
+                  {/* Spacing & Paragraphs */}
+                  <span><code className="bg-gray-100 px-1 rounded">  </code> Double space = natural pause</span>
+                  <span><code className="bg-gray-100 px-1 rounded">\\n\\n</code> Paragraph = extended pause</span>
+                  <span><code className="bg-gray-100 px-1 rounded">\\n\\n\\n</code> Scene change = major break</span>
+                  
+                  {/* Contextual Timing */}
+                  <span><code className="bg-gray-100 px-1 rounded">card.</code> → <code className="bg-gray-100 px-1 rounded">card...</code> Auto-ellipses</span>
+                  <span><code className="bg-gray-100 px-1 rounded">listen</code> → <code className="bg-gray-100 px-1 rounded">listen...</code> Attention cues</span>
+                  <span><code className="bg-gray-100 px-1 rounded">think.</code> → <code className="bg-gray-100 px-1 rounded">think...</code> Reflection words</span>
                 </div>
-              )}
+                <div className="mt-2 pt-2 border-t border-yellow-200">
+                  <div className="mb-2">
+                    <p className="text-xs font-medium text-amber-800 mb-1">Internal Pause System (Angela's Voice Config):</p>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 text-xs text-gray-600">
+                      <span>Micro: 0.4s</span>
+                      <span>Beat: 0.7s</span>
+                      <span>Minor: 1.2s</span>
+                      <span>Shift: 1.8s</span>
+                      <span>Impact: 2.3s</span>
+                      <span>Major: 3.5s</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-amber-700 italic">
+                    💡 V3 uses natural punctuation for pacing - these are automatically applied during processing
+                  </p>
+                </div>
+              </div>
+
+              {/* Available Audio Tags */}
+              <div className="mb-4 p-3 bg-white/70 rounded-lg border border-yellow-300">
+                <h4 className="text-sm font-semibold text-amber-800 mb-3">🎭 Click to Copy Audio Tags</h4>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+                  {[
+                    // Breathing & Natural Sounds
+                    { tag: '[sighs]', desc: 'Natural sigh' },
+                    { tag: '[exhales]', desc: 'Breathing out' },
+                    { tag: '[inhales]', desc: 'Breathing in' },
+                    { tag: '[breathes deeply]', desc: 'Deep breath' },
+                    { tag: '[coughs]', desc: 'Natural cough' },
+                    
+                    // Emotional Expressions
+                    { tag: '[chuckles]', desc: 'Light laugh' },
+                    { tag: '[sad]', desc: 'Melancholy tone' },
+                    { tag: '[happy]', desc: 'Joyful energy' },
+                    { tag: '[excited]', desc: 'High energy' },
+                    { tag: '[amazed]', desc: 'Wonder' },
+                    { tag: '[concerned]', desc: 'Gentle worry' },
+                    { tag: '[worried]', desc: 'Anxious tone' },
+                    { tag: '[thoughtful]', desc: 'Reflective wisdom' },
+                    { tag: '[confident]', desc: 'Assured delivery' },
+                    
+                    // Mystical & Spiritual
+                    { tag: '[mysterious]', desc: 'Mystical energy' },
+                    { tag: '[mystical]', desc: 'Spiritual tone' },
+                    { tag: '[curious]', desc: 'Wondering tone' },
+                    { tag: '[intrigued]', desc: 'Deep interest' },
+                    
+                    // Delivery Styles
+                    { tag: '[whispers]', desc: 'Soft whisper' },
+                    { tag: '[slowly]', desc: 'Deliberate pace' },
+                    { tag: '[emphasizes]', desc: 'Key insight' },
+                    { tag: '[mischievously]', desc: 'Playful energy' }
+                  ].map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={() => navigator.clipboard.writeText(item.tag)}
+                      className="p-2 bg-white hover:bg-amber-50 border border-amber-200 hover:border-amber-300 rounded text-xs transition-colors duration-150 text-left"
+                      title={`Click to copy: ${item.desc}`}
+                    >
+                      <code className="font-mono text-amber-800 font-semibold">{item.tag}</code>
+                      <div className="text-gray-600 text-xs mt-1">{item.desc}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <textarea
+                value={editableOutput}
+                onChange={(e) => setEditableOutput(e.target.value)}
+                className="w-full h-80 p-4 border-2 border-yellow-200 rounded-lg resize-y focus:outline-none focus:border-yellow-400 text-gray-800 text-base leading-relaxed"
+                placeholder="Your processed text will appear here for editing..."
+              />
             </div>
           )}
 
-          {/* Processing Mode Toggle */}
-          <div className="mb-6 p-4 bg-white/20 backdrop-blur-sm border border-white/30 rounded-2xl">
-            <h3 className="text-lg font-semibold text-purple-800 mb-3">🎛️ Processing Mode</h3>
-            <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="processingMode"
-                  value="natural"
-                  checked={processingMode === 'natural'}
-                  onChange={(e) => setProcessingMode(e.target.value as 'natural')}
-                  className="w-4 h-4 text-purple-600"
-                />
-                <span className="text-purple-800 font-medium">
-                  🌿 Natural (Recommended for v3)
-                </span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="processingMode"
-                  value="traditional"
-                  checked={processingMode === 'traditional'}
-                  onChange={(e) => setProcessingMode(e.target.value as 'traditional')}
-                  className="w-4 h-4 text-purple-600"
-                />
-                <span className="text-purple-800 font-medium">
-                  ⚙️ Traditional (SSML)
-                </span>
-              </label>
-            </div>
-            <p className="text-sm text-purple-600 mt-2">
-              {processingMode === 'natural' 
-                ? '✨ Uses natural punctuation and ElevenLabs v3 audio tags for emotional delivery'
-                : '🔧 Uses traditional SSML markup and complex processing pipeline'
-              }
+          {/* Generate Button */}
+          <div className="flex justify-center mb-8">
+            <button
+              onClick={generateAudio}
+              disabled={!(editableOutput || text).trim() || isProcessing}
+              className="flex items-center gap-4 px-12 py-6 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-bold text-xl rounded-2xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+            >
+              {isProcessing ? (
+                <>
+                  <Loader2 size={28} className="animate-spin" />
+                  PROCESSING...
+                </>
+              ) : (
+                <>
+                  <Play size={28} />
+                  GENERATE ANGELA&apos;S VOICE
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* V3 Processing Info */}
+          <div className="mb-8 p-4 bg-gradient-to-r from-purple-50 to-indigo-50 border-2 border-purple-200 rounded-2xl text-center">
+            <p className="text-sm text-purple-700">
+              🚀 <strong>ElevenLabs V3 Optimized:</strong> Applies Angela&apos;s natural pacing rules (ellipses, em-dashes, hesitations) + contextual audio tags
             </p>
           </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-6 mb-8">
+          {/* Advanced Guide (Optional) */}
+          <div className="mb-8">
             <button
-              onClick={generateProof}
-              disabled={!text.trim() || isProcessing}
-              className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-2xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              onClick={() => setShowGuide(!showGuide)}
+              className="flex items-center justify-center gap-3 w-full p-3 bg-gradient-to-r from-emerald-50 to-teal-50 hover:from-emerald-100 hover:to-teal-100 border border-emerald-200 rounded-lg transition-all duration-200"
             >
-              <Play size={20} />
-              GENERATE PROOF
+              <BookOpen size={20} className="text-emerald-600" />
+              <span className="text-sm font-medium text-emerald-800">
+                📖 Advanced Tips & Examples
+              </span>
+              {showGuide ? (
+                <ChevronUp size={16} className="text-emerald-600" />
+              ) : (
+                <ChevronDown size={16} className="text-emerald-600" />
+              )}
             </button>
             
-            <button
-              onClick={generateFull}
-              disabled={!text.trim() || isProcessing}
-              className="flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 disabled:from-gray-400 disabled:to-gray-500 text-white font-semibold rounded-2xl transition-all duration-200 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
-            >
-              <CheckCircle size={20} />
-              FULL TRANSMISSION
-            </button>
+            {showGuide && (
+              <div className="mt-3 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg">
+                <div className="space-y-4">
+                  <div className="p-3 bg-white border border-emerald-200 rounded-lg">
+                    <h5 className="font-semibold text-emerald-800 mb-2">💡 Pro Tips</h5>
+                    <ul className="text-sm text-gray-800 space-y-1">
+                      <li>• Start sentences with audio tags: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">[sighs] This is complicated</code></li>
+                      <li>• Use ellipses after key concepts: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">&quot;isolation...&quot;</code></li>
+                      <li>• Em-dashes for smooth transitions: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">&quot;scattered — but here&apos;s the thing&quot;</code></li>
+                      <li>• Let V3 handle natural speech - don&apos;t over-tag!</li>
+                      <li>• Trust punctuation for pacing over excessive tags</li>
+                    </ul>
+                  </div>
+                  
+                  <div className="p-3 bg-white border border-emerald-200 rounded-lg">
+                    <h5 className="font-semibold text-emerald-800 mb-2">📝 Example Transformations</h5>
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <div className="font-medium text-gray-800 mb-1">Before:</div>
+                        <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800 border">&quot;The Hermit. This is different.&quot;</code>
+                      </div>
+                      <div>
+                        <div className="font-medium text-gray-800 mb-1">After:</div>
+                        <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800 border">&quot;[sighs] The Hermit... this one&apos;s different...&quot;</code>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Audio Player & Download */}

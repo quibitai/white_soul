@@ -6,22 +6,22 @@ voice:
     similarity_boost: 0.85  # Higher for better voice consistency in v3
     style: 0.0             # Not used in v3 - stability controls behavior instead
     speaker_boost: true     # Enhances clarity and presence
-    speed: 1.0             # Natural speaking rate for mystical content
+    speed: 0.85            # Slower, more contemplative pace for mystical content
     quality: "enhanced"     # Enhanced quality for professional output
   seed: 123456            # Deterministic generation for consistency
   stability_mode: "creative"  # v3 stability mode: creative/natural/robust
 
 pacing:
-  wpm: 145
+  wpm: 135               # Reduced from 145 for more contemplative delivery
   pauses:
-    # WST2 Studio Speech Rules - Break Tag System
-    micro: 300            # 0.3s - very slight hesitation or hard emphasis cutoff
-    beat: 500             # 0.5s - micro-beat for rhythmic control or emphasis
-    minor: 1000           # 1.0s - minor beat; after punchlines, pivots, or slight reflection
-    shift: 1500           # 1.5s - emotional shift, impact line landing, paragraph break
-    impact: 2000          # 2.0s - emotional shift, impact line landing, paragraph break
-    major: 3000           # 3.0s - major mood shift, breath reset, scene change, or emotional floor drop
-  reflective_rate_delta_pct: -2
+    # WST2 Studio Speech Rules - Break Tag System - Enhanced for natural pacing
+    micro: 400            # 0.4s - very slight hesitation or hard emphasis cutoff (was 0.3s)
+    beat: 700             # 0.7s - micro-beat for rhythmic control or emphasis (was 0.5s)
+    minor: 1200           # 1.2s - minor beat; after punchlines, pivots, or slight reflection (was 1.0s)
+    shift: 1800           # 1.8s - emotional shift, impact line landing, paragraph break (was 1.5s)
+    impact: 2300          # 2.3s - emotional shift, impact line landing, paragraph break (was 2.0s)
+    major: 3500           # 3.5s - major mood shift, breath reset, scene change, or emotional floor drop (was 3.0s)
+  reflective_rate_delta_pct: -3  # Slightly more reflective pacing adjustment
 
 tone:
   allow: ["kinda","literally","ugh","you know","I mean","so yeah","still","weird"]
@@ -52,12 +52,12 @@ emphasis:
   caps_max_per_sentence: 2
 
 chunking:
-  target_seconds: 30          # Increased for longer, more natural chunks
-  max_chars: 2500             # Increased from 1800 to reduce chunk count
-  min_chars: 800              # Added minimum to prevent tiny chunks
+  target_seconds: 25          # Slightly shorter for better pacing control (was 30)
+  max_chars: 2200             # Reduced slightly for more natural breaks (was 2500)
+  min_chars: 900              # Increased minimum for substantial chunks (was 800)
   guardrails:
-    start_with_micro_pause: false  # Disabled to reduce processing overhead
-    end_with_short_pause: false    # Disabled to reduce artifacts
+    start_with_micro_pause: true   # Re-enabled for natural chunk transitions
+    end_with_short_pause: true     # Re-enabled for breathing room between chunks
 
 punctuation:
   # WST2 Studio Speech Rules - Punctuation + Space Logic
@@ -103,9 +103,9 @@ sound_effects:
 
 conversational_realism:
   you_guys_ratio: 0.35      # 35% of "you" should be "you guys"
-  verbal_hesitation_ratio: 0.25  # 25% of breaks replaced with verbal cues
-  run_on_sentence_ratio: 0.30    # 30% more sentence combining
-  all_caps_frequency: 0.15       # 15% of key words should be ALL CAPS
+  verbal_hesitation_ratio: 0.35  # 35% of breaks replaced with verbal cues (increased for more natural flow)
+  run_on_sentence_ratio: 0.20    # 20% less sentence combining for clearer pacing (was 30%)
+  all_caps_frequency: 0.12       # 12% slightly reduced emphasis for calmer delivery (was 15%)
   avoid_repetitive_negation: true # Reduce "it's not X, it's not Y" patterns
   mystical_vocabulary: true      # Ground overly mystical language in accessible terms
 
@@ -115,31 +115,44 @@ audio_tags:
   tag_strategy: "contextual"     # Strategic placement based on content, not probability
   max_tags_per_chunk: 2         # Conservative limit for natural flow
   
-  # v3-optimized emotional delivery tags (verified compatibility)
+  # v3-optimized emotional delivery tags (verified ElevenLabs V3 compatibility)
   emotional_tags:
-    # Core emotional expressions
-    laughter: ["[laughs]", "[giggles]", "[chuckles]"] 
-    whispers: ["[whispers]"]                          # For intimate, secretive moments
-    breaths: ["[sighs]", "[exhales]"]                 # Natural vocal breaks
-    curiosity: ["[curious]", "[intrigued]"]           # Perfect for card exploration
+    # Natural vocal expressions & breathing
+    breaths: ["[sighs]", "[exhales]", "[inhales]", "[breathes deeply]", "[coughs]"]  # Natural vocal breaks and pauses
+    
+    # Emotional expressions
+    joy: ["[chuckles]", "[happy]"]                    # Light laughter and joy
+    sadness: ["[sad]"]                                # Melancholy delivery
     excitement: ["[excited]", "[amazed]"]             # Energy surges in readings
+    concern: ["[concerned]", "[worried]"]             # Gentle worry, empathetic care
+    knowing: ["[thoughtful]", "[confident]"]          # Deep inner wisdom, trust
+    
+    # Mystical & spiritual energy
     mystery: ["[mysterious]", "[mystical]"]           # Angela's mystical presence  
-    knowing: ["[knowing]", "[confident]"]             # Deep inner wisdom, trust
-    concern: ["[concerned]", "[thoughtful]"]          # Gentle worry, empathetic care
-    emphasis: ["[emphasizes]"]                        # For key insights
+    curiosity: ["[curious]", "[intrigued]"]           # Perfect for card exploration
+    mischievous: ["[mischievously]"]                  # Playful, knowing energy
+    
+    # Delivery styles
+    whispers: ["[whispers]"]                          # Soft, intimate delivery
+    emphasis: ["[emphasizes]", "[slowly]"]            # For key insights and deliberate pacing
     
   # v3-compatible sound effects (minimal, strategic use)
   ambient_effects:
     mystical: ["[soft wind]", "[gentle chimes]"]      # Subtle atmosphere only
   
-  # Simplified context-aware triggers for natural placement
+  # Context-aware triggers for natural placement (updated for V3 compatibility)
   placement_triggers:
-    whispers: ["secret", "hidden", "quietly", "intimate", "hermit", "solitude", "whisper", "personal", "private"]
-    curiosity: ["wonder", "curious", "explore", "discover", "card", "insight", "clarity", "vision", "see", "truth", "know", "understand", "realize", "clear", "sight", "awareness", "perception"]
+    breaths: ["pause", "wait", "moment", "breath", "think", "reflect", "consider", "deep", "silence", "quiet", "still", "slowly", "gently"]
+    joy: ["wonderful", "amazing", "beautiful", "love", "celebration", "victory", "success", "breakthrough", "joy", "happiness", "delight", "pleasure"]
+    sadness: ["loss", "grief", "sorrow", "difficult", "hard", "painful", "hurt", "broken", "tears", "sadness", "melancholy", "heavy heart"]
     excitement: ["amazing", "incredible", "powerful", "energy", "transformation", "freedom", "liberation", "breakthrough", "shift", "change", "unleashed", "release", "boundaries", "limits", "break free"]
-    mystery: ["mysterious", "reveal", "unveil", "tarot", "divine", "spiritual", "high priestess", "priestess", "mystic", "ancient", "sacred", "intuition", "inner knowing", "cosmic", "universal", "wisdom", "arcana", "cards", "reading", "oracle", "veil", "behind", "beneath"]
-    knowing: ["trust", "instinct", "gut feeling", "inner voice", "already know", "deep down", "soul", "heart", "intuitive", "feel", "sense", "just know", "obvious", "truth", "authentic", "real", "genuine"]
     concern: ["heavy", "weight", "burden", "carrying", "load", "pressure", "stress", "overwhelmed", "too much", "difficult", "struggle", "tired", "exhausted", "worn down"]
+    knowing: ["trust", "instinct", "gut feeling", "inner voice", "already know", "deep down", "soul", "heart", "intuitive", "feel", "sense", "just know", "obvious", "truth", "authentic", "real", "genuine"]
+    mystery: ["mysterious", "reveal", "unveil", "tarot", "divine", "spiritual", "high priestess", "priestess", "mystic", "ancient", "sacred", "intuition", "inner knowing", "cosmic", "universal", "wisdom", "arcana", "cards", "reading", "oracle", "veil", "behind", "beneath"]
+    curiosity: ["wonder", "curious", "explore", "discover", "card", "insight", "clarity", "vision", "see", "truth", "know", "understand", "realize", "clear", "sight", "awareness", "perception"]
+    mischievous: ["playful", "sneaky", "clever", "twist", "surprise", "plot", "scheme", "trick", "game", "secret plan", "wink", "hint", "tease", "jest", "smirk"]
+    whispers: ["secret", "private", "intimate", "personal", "quiet", "soft", "gentle", "tender", "close", "whisper", "between us"]
+    emphasis: ["important", "key", "crucial", "vital", "essential", "remember", "listen", "pay attention", "focus", "understand this", "here's the thing"]
 
 speech_patterns:
   hesitation_cues:
