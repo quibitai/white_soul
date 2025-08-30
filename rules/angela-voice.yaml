@@ -43,12 +43,7 @@ group_address:
   max_ratio: 0.50
   max_consecutive: 2
 
-emphasis:
-  use_ssml: false            # disabled by default for model compatibility
-  use_prosody: false         # disabled by default - only breaks allowed
-  use_emphasis_tags: false   # disabled by default for stability
-  caps_max_per_clause: 1
-  caps_max_per_sentence: 2
+
 
 chunking:
   target_seconds: 25          # Slightly shorter for better pacing control (was 30)
