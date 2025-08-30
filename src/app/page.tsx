@@ -111,7 +111,7 @@ export default function Home() {
   };
 
   /**
-   * Processes text through the V3 preparation pipeline
+   * Processes text through the V2 SSML preparation pipeline
    */
   const prepareText = async (inputText?: string): Promise<{ 
     manifestId: string; 
@@ -121,7 +121,7 @@ export default function Home() {
     const textToProcess = inputText || text;
     
     try {
-      console.log('🚀 Starting V3 text preparation');
+      console.log('🎙️ Starting V2 SSML text preparation');
       console.log('📝 Input text preview:', textToProcess.substring(0, 100) + '...');
       
       const response = await fetch('/api/prepare', {
@@ -131,7 +131,7 @@ export default function Home() {
           text: textToProcess,
           output: 'text',
           preset: 'angela',
-          processingMode: 'angela_v3',
+          processingMode: 'angela_v2',
         }),
       });
 
@@ -153,7 +153,7 @@ export default function Home() {
       }
 
       const data = await response.json();
-      console.log('✅ V3 text preparation complete:', {
+      console.log('✅ V2 SSML text preparation complete:', {
         manifestId: data.manifestId,
         hasAudioTags: (data.processing?.finalOutput || data.processing?.finalText || '').includes('['),
         finalTextPreview: (data.processing?.finalOutput || data.processing?.finalText || 'No processed text found').substring(0, 150) + '...',
@@ -171,7 +171,7 @@ export default function Home() {
         processing: data.processing 
       };
     } catch (error) {
-      console.error('V3 preparation error:', error);
+      console.error('V2 SSML preparation error:', error);
       setState({ status: 'error', error: error instanceof Error ? error.message : 'Unknown error' });
       return null;
     }
@@ -238,7 +238,7 @@ export default function Home() {
           text: editedText,
           output: 'text',
           preset: 'angela',
-          processingMode: 'angela_v3', // Unified Angela V3 processing mode
+          processingMode: 'angela_v2', // Unified Angela V3 processing mode
         }),
       });
 
@@ -532,51 +532,9 @@ export default function Home() {
             <div className="mb-6 p-6 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-2xl">
               <h3 className="text-lg font-semibold text-amber-800 mb-4">📝 Annotated Script - Edit for Fine-Tuning</h3>
               
-              {/* SSML Reference for V2 */}
+              {/* Click to Copy SSML Tags (V2) */}
               <div className="mb-4 p-3 bg-white/70 rounded-lg border border-blue-300">
-                <h4 className="text-sm font-semibold text-blue-800 mb-2">⏱️ SSML Timing Reference (V2)</h4>
-                <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-1 text-xs text-gray-700">
-                  {/* Break Times */}
-                  <span><code className="bg-blue-50 px-1 rounded">&lt;break time="0.5s"/&gt;</code> Short pause</span>
-                  <span><code className="bg-blue-50 px-1 rounded">&lt;break time="1.2s"/&gt;</code> Natural pause</span>
-                  <span><code className="bg-blue-50 px-1 rounded">&lt;break time="2.0s"/&gt;</code> Long pause</span>
-                  
-                  {/* Prosody Rate */}
-                  <span><code className="bg-blue-50 px-1 rounded">rate="0.8"</code> Slower delivery</span>
-                  <span><code className="bg-blue-50 px-1 rounded">rate="1.1"</code> Faster delivery</span>
-                  <span><code className="bg-blue-50 px-1 rounded">rate="0.9"</code> Contemplative</span>
-                  
-                  {/* Prosody Pitch */}
-                  <span><code className="bg-blue-50 px-1 rounded">pitch="-2st"</code> Lower pitch</span>
-                  <span><code className="bg-blue-50 px-1 rounded">pitch="+1st"</code> Higher pitch</span>
-                  <span><code className="bg-blue-50 px-1 rounded">volume="soft"</code> Whisper</span>
-                  
-                  {/* Emphasis Levels */}
-                  <span><code className="bg-blue-50 px-1 rounded">level="moderate"</code> Key insight</span>
-                  <span><code className="bg-blue-50 px-1 rounded">level="strong"</code> Major point</span>
-                  <span><code className="bg-blue-50 px-1 rounded">level="reduced"</code> Subtle emphasis</span>
-                </div>
-                <div className="mt-2 pt-2 border-t border-blue-200">
-                  <div className="mb-2">
-                    <p className="text-xs font-medium text-blue-800 mb-1">Angela&apos;s V2 Voice Settings:</p>
-                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 text-xs text-gray-600">
-                      <span>Stability: 0.35</span>
-                      <span>Similarity: 0.80</span>
-                      <span>Style: 0.20</span>
-                      <span>Speed: 0.85</span>
-                      <span>Speaker Boost: On</span>
-                      <span>Model: V2 Multilingual</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-blue-700 italic">
-                    💡 V2 uses SSML tags for emotional delivery with cloned voice compatibility
-                  </p>
-                </div>
-              </div>
-
-              {/* Available SSML Patterns for V2 */}
-              <div className="mb-4 p-3 bg-white/70 rounded-lg border border-blue-300">
-                <h4 className="text-sm font-semibold text-blue-800 mb-3">🎙️ Click to Copy SSML Patterns (V2)</h4>
+                <h4 className="text-sm font-semibold text-blue-800 mb-3">🎙️ Click to Copy SSML Tags (V2)</h4>
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                   {[
                     // Natural Pauses & Breathing
@@ -622,6 +580,24 @@ export default function Home() {
                     </button>
                   ))}
                 </div>
+                
+                {/* Voice Settings Info */}
+                <div className="mt-3 pt-3 border-t border-blue-200">
+                  <div className="mb-2">
+                    <p className="text-xs font-medium text-blue-800 mb-1">Angela&apos;s V2 Voice Settings:</p>
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 text-xs text-gray-600">
+                      <span>Stability: 0.35</span>
+                      <span>Similarity: 0.80</span>
+                      <span>Style: 0.20</span>
+                      <span>Speed: 0.85</span>
+                      <span>Speaker Boost: On</span>
+                      <span>Model: V2 Multilingual</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-700 italic">
+                    💡 V2 uses SSML tags for emotional delivery with cloned voice compatibility
+                  </p>
+                </div>
               </div>
 
               <textarea
@@ -654,27 +630,27 @@ export default function Home() {
               {showGuide && (
                 <div className="mt-3 p-4 bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-lg">
                   <div className="space-y-4">
-                    <div className="p-3 bg-white border border-emerald-200 rounded-lg">
-                      <h5 className="font-semibold text-emerald-800 mb-2">💡 Pro Tips</h5>
+                    <div className="p-3 bg-white border border-blue-200 rounded-lg">
+                      <h5 className="font-semibold text-blue-800 mb-2">💡 V2 SSML Pro Tips</h5>
                       <ul className="text-sm text-gray-800 space-y-1">
-                        <li>• Start sentences with audio tags: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">[sighs] This is complicated</code></li>
-                        <li>• Use ellipses after key concepts: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">&quot;isolation...&quot;</code></li>
-                        <li>• Em-dashes for smooth transitions: <code className="bg-emerald-100 px-1 py-0.5 rounded text-xs">&quot;scattered — but here&apos;s the thing&quot;</code></li>
-                        <li>• Let V3 handle natural speech - don&apos;t over-tag!</li>
-                        <li>• Trust punctuation for pacing over excessive tags</li>
+                        <li>• Use natural punctuation - V2 converts to SSML automatically</li>
+                        <li>• Ellipses become natural pauses: <code className="bg-blue-100 px-1 py-0.5 rounded text-xs">&quot;isolation...&quot;</code></li>
+                        <li>• Em-dashes for smooth transitions: <code className="bg-blue-100 px-1 py-0.5 rounded text-xs">&quot;scattered — but here&apos;s the thing&quot;</code></li>
+                        <li>• V2 adds SSML prosody and emphasis tags automatically</li>
+                        <li>• Cloned voice compatibility with emotional delivery</li>
                       </ul>
                     </div>
                     
-                    <div className="p-3 bg-white border border-emerald-200 rounded-lg">
-                      <h5 className="font-semibold text-emerald-800 mb-2">📝 Example Transformations</h5>
+                    <div className="p-3 bg-white border border-blue-200 rounded-lg">
+                      <h5 className="font-semibold text-blue-800 mb-2">📝 V2 SSML Transformation</h5>
                       <div className="space-y-3 text-sm">
                         <div>
-                          <div className="font-medium text-gray-800 mb-1">Before:</div>
+                          <div className="font-medium text-gray-800 mb-1">Input:</div>
                           <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800 border">&quot;The Hermit. This is different.&quot;</code>
                         </div>
                         <div>
-                          <div className="font-medium text-gray-800 mb-1">After:</div>
-                          <code className="bg-gray-100 px-2 py-1 rounded text-sm font-mono text-gray-800 border">&quot;[sighs] The Hermit... this one&apos;s different...&quot;</code>
+                          <div className="font-medium text-gray-800 mb-1">V2 SSML Output:</div>
+                          <code className="bg-blue-50 px-2 py-1 rounded text-sm font-mono text-blue-800 border border-blue-200">&quot;&lt;speak&gt;The Hermit.&lt;break time=&quot;1.2s&quot;/&gt; This is different.&lt;/speak&gt;&quot;</code>
                         </div>
                       </div>
                     </div>
@@ -718,7 +694,7 @@ export default function Home() {
                       ? 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700'
                       : 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700'
                   }`}
-                  title="🚀 ElevenLabs V3 Optimized: Applies Angela's natural pacing rules (ellipses, em-dashes, hesitations) + contextual audio tags"
+                  title="🎙️ ElevenLabs V2 SSML: Applies Angela's conversational style + SSML emotional delivery for cloned voice compatibility"
                 >
                   {isGeneratingVoice ? (
                     <>
@@ -733,14 +709,14 @@ export default function Home() {
                   )}
                 </button>
                 
-                {/* V3 Info Tooltip */}
+                {/* V2 SSML Info Tooltip */}
                 <div className="group relative">
-                  <div className="w-6 h-6 bg-purple-100 hover:bg-purple-200 rounded-full flex items-center justify-center cursor-help transition-colors">
-                    <span className="text-purple-600 text-sm font-bold">?</span>
+                  <div className="w-6 h-6 bg-blue-100 hover:bg-blue-200 rounded-full flex items-center justify-center cursor-help transition-colors">
+                    <span className="text-blue-600 text-sm font-bold">?</span>
                   </div>
-                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-purple-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
-                    🚀 ElevenLabs V3 Optimized
-                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-purple-900"></div>
+                  <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-blue-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                    🎙️ ElevenLabs V2 SSML
+                    <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-blue-900"></div>
                   </div>
                 </div>
               </div>
@@ -828,7 +804,7 @@ export default function Home() {
                     </audio>
                     
                     <div className="mt-4 flex items-center justify-between text-sm text-emerald-700">
-                      <span>🎭 ElevenLabs v3 • Emotional Audio Tags</span>
+                      <span>🎙️ ElevenLabs v2 • SSML Emotional Delivery</span>
                       <span>✨ White Soul Tarot</span>
                     </div>
                   </div>

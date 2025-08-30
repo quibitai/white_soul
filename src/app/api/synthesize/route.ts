@@ -107,7 +107,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       finalModelId
     });
 
-    // Get model-optimized voice settings with v3 enhancements
+    // Get model-optimized voice settings for v2
     const optimizedSettings = getModelOptimizedSettings(finalModelId, 'full');
     const finalVoiceSettings = {
       ...optimizedSettings,

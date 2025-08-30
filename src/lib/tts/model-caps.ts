@@ -14,7 +14,7 @@ export interface ModelCapabilities {
   supportsPronunciationDictionaries: boolean;
   maxDictionaries: number;
   supportsWebSocket: boolean;
-  supportsAudioTags?: boolean; // v3's key feature for emotional delivery
+  supportsAudioTags?: boolean; // Legacy v3 feature (not used in v2)
   supportsStabilityModes?: boolean; // Creative, Natural, Robust modes
   recommendedSettings: {
     stability: number;
@@ -126,7 +126,7 @@ export function sanitizeForModel(text: string, modelId: string): string {
     sanitized = sanitized.replace(/<emphasis:[^>]*>([^<]*)<\/emphasis>/g, '$1');
   }
   
-  // Remove rate tags (v3 doesn't use these)
+  // Remove rate tags (not needed for v2 SSML)
   sanitized = sanitized.replace(/<rate:[^>]*>([^<]*)<\/rate>/g, '$1');
 
   // Handle break tags
