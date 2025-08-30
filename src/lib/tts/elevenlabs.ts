@@ -8,9 +8,7 @@ import {
   sanitizeForModel, 
   getModelCapabilities, 
   getRecommendedSettings, 
-  supportsAudioTags,
-  getV3StabilityValue,
-  isV3Model 
+  supportsWebSocket
 } from './model-caps';
 // import { selectDictionaries, toElevenLabsFormat } from './pronunciation'; // Temporarily disabled
 
@@ -22,6 +20,7 @@ export interface TTSOptions {
   seed?: number;
   previousText?: string;
   nextText?: string;
+  previousRequestIds?: string[]; // For request stitching consistency
   pronunciationDictionaries?: string[]; // Dictionary IDs to use
   enableSSMLParsing?: boolean; // For WebSocket streaming
   speed?: number; // 0.7-1.2 range for speech speed control
@@ -53,7 +52,8 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
     seed, 
     previousText, 
     nextText, 
-    pronunciationDictionaries = [], // Temporarily unused
+    previousRequestIds = [],
+    pronunciationDictionaries = [],
     enableSSMLParsing = false,
     speed,
     quality,
@@ -71,129 +71,69 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
   // Get model capabilities and sanitize text
   const modelCaps = getModelCapabilities(modelId);
   
-  // Log the raw text received before any processing
-  console.log('🔍 ElevenLabs Raw Input Text:', {
-    preview: text.substring(0, 200) + '...',
-    length: text.length,
-    hasMarkup: /<[^>]+>/.test(text) || /\[[^\]]+\]/.test(text),
-    suspiciousContent: text.match(/hashtag|meta/gi) || [],
-    audioTags: (text.match(/\[[^\]]+\]/g) || []).length
+  console.log('🎙️ ElevenLabs v2 TTS:', {
+    model: modelId,
+    textLength: text.length,
+    hasSSML: /<[^>]+>/.test(text),
+    contextProvided: !!(previousText || nextText),
+    requestStitching: previousRequestIds.length > 0
   });
   
-  // For V3 models, detect if input is truly clean (no markup except audio tags)
-  let sanitizedText;
-  const hasLegacyMarkup = text.includes('<pause') || text.includes('<emphasis') || text.includes('<rate') || text.includes('<break') || text.includes('<speak');
+  // Sanitize text for v2 model
+  const sanitizedText = sanitizeForModel(text.trim(), modelId);
   
-  if (isV3Model(modelId) && !hasLegacyMarkup) {
-    console.log('🚀 V3 Pure Input: Clean text detected, minimal processing');
-    // Absolutely minimal processing for pure V3 input
-    sanitizedText = text.trim()
-      .replace(/\bhashtag\s+\w+\b/gi, '') // Remove any hashtag artifacts
-      .replace(/\bmeta\b(?!\s+\w)/gi, '') // Remove standalone meta words
-      .replace(/\s{3,}/g, '  ') // Normalize excessive whitespace but preserve double spaces for pacing
-      .replace(/\n{3,}/g, '\n\n'); // Normalize excessive newlines but preserve paragraph breaks
-      
-    console.log('✨ V3 Pure: Preserving natural punctuation for V3 pacing');
-  } else {
-    console.log('🔧 Legacy/Markup Input: Full sanitization needed');
-    sanitizedText = sanitizeForModel(text.trim(), modelId);
-  }
-  
-  // Log the final text being sent to API
-  console.log('🚀 Final Text to ElevenLabs:', {
-    preview: sanitizedText.substring(0, 200) + '...',
-    length: sanitizedText.length,
-    audioTags: (sanitizedText.match(/\[[^\]]+\]/g) || []).length,
-    remainingMarkup: (sanitizedText.match(/<[^>]+>/g) || []).length
-  });
-  
-  // Get recommended voice settings for the model
+  // Get recommended voice settings
   const recommendedSettings = getRecommendedSettings(modelId);
   
-  // Check if this is a v3 model for special handling
-  const isV3 = isV3Model(modelId);
-  const supportsV3AudioTags = supportsAudioTags(modelId);
-
-  // Select pronunciation dictionaries (max 3)
-  // Note: Temporarily disabled until dictionaries are set up in ElevenLabs dashboard
-  // const selectedDictionaries = selectDictionaries(pronunciationDictionaries, modelCaps.maxDictionaries);
-  // const pronunciationData = toElevenLabsFormat(selectedDictionaries);
-
-  // Use regular Text-to-Speech API - v3 model supports audio tags with this endpoint
-  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${format}`;
-  
-  // Optimize voice settings for v3 models
-  let finalVoiceSettings = {
+  // Merge voice settings with recommended defaults
+  const finalVoiceSettings = {
     ...recommendedSettings,
     ...voiceSettings,
   };
-  
-  // Apply v3-specific optimizations
-  if (isV3 && supportsV3AudioTags) {
-    finalVoiceSettings = {
-      ...finalVoiceSettings,
-      // Use Creative mode for maximum emotional expressiveness
-      stability: finalVoiceSettings.stability || getV3StabilityValue('creative'),
-      // Higher similarity boost for better voice consistency in v3
-      similarity_boost: Math.max(finalVoiceSettings.similarity_boost || 0.85, 0.85),
-      // Style is not used in v3, but keep for compatibility
-      style: 0.0,
-    };
-  }
 
+  const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${format}`;
+  
   const requestBody: Record<string, unknown> = {
     text: sanitizedText,
     model_id: modelId,
     voice_settings: finalVoiceSettings,
     ...(seed && { seed }),
-    ...(speed && { speed }), // Add speed control
-    ...(quality && { quality }), // Add quality parameter
+    ...(speed && { speed }),
+    ...(quality && { quality }),
   };
 
-  // Add context parameters only for non-v3 models (v3 doesn't support them)
-  if (!isV3) {
-    if (previousText) {
-      requestBody.previous_text = previousText.slice(-300); // Limit context length
-    }
-    if (nextText) {
-      requestBody.next_text = nextText.slice(0, 300); // Limit context length
-    }
+  // Add context parameters for better continuity
+  if (previousText) {
+    requestBody.previous_text = previousText.slice(-300);
+  }
+  if (nextText) {
+    requestBody.next_text = nextText.slice(0, 300);
   }
 
-  // Add pronunciation dictionaries if supported and available
-  // Note: Pronunciation dictionaries must be pre-created in ElevenLabs dashboard
-  // Temporarily disabled until dictionaries are set up
-  // if (modelCaps.supportsPronunciationDictionaries && pronunciationData.length > 0) {
-  //   requestBody.pronunciation_dictionary_locators = pronunciationData;
-  // }
+  // Add request stitching for voice consistency
+  if (previousRequestIds.length > 0) {
+    requestBody.previous_request_ids = previousRequestIds.slice(-2); // Last 2 requests
+  }
 
-  // Enable SSML parsing for v3 models (required for audio tags) or WebSocket streaming
-  if (isV3 || (enableSSMLParsing && modelCaps.supportsWebSocket)) {
+  // Add pronunciation dictionaries if supported
+  if (modelCaps.supportsPronunciationDictionaries && pronunciationDictionaries.length > 0) {
+    requestBody.pronunciation_dictionary_locators = pronunciationDictionaries
+      .slice(0, modelCaps.maxDictionaries)
+      .map(id => ({ pronunciation_dictionary_id: id }));
+  }
+
+  // Enable SSML parsing if needed
+  if (enableSSMLParsing || modelCaps.supportsSSML) {
     requestBody.enable_ssml_parsing = true;
   }
 
-  // Enhanced debug logging for v3 models
-  if (isV3) {
-    const audioTagsFound = sanitizedText.match(/\[[^\]]+\]/g) || [];
-    const isPureInput = !hasLegacyMarkup;
-    console.log('🎭 ElevenLabs v3 Enhanced:', {
-      modelId,
-      endpoint: 'text-to-speech',
-      url,
-      textPreview: sanitizedText.substring(0, 200),
-      audioTagsSupport: supportsV3AudioTags,
-      audioTagsFound: audioTagsFound.length,
-      audioTagsList: audioTagsFound.slice(0, 5), // Show first 5 tags
-      enableSSMLParsing: requestBody.enable_ssml_parsing,
-      inputType: isPureInput ? 'Pure V3 (natural punctuation preserved)' : 'Legacy (SSML converted)',
-      optimizations: {
-        contextParametersSkipped: 'v3 uses internal context understanding',
-        stabilityMode: 'Creative mode for emotional expressiveness',
-        punctuationPreserved: isPureInput,
-        voiceSettings: finalVoiceSettings
-      }
-    });
-  }
+  console.log('🚀 ElevenLabs v2 Request:', {
+    endpoint: url,
+    textPreview: sanitizedText.substring(0, 100) + '...',
+    voiceSettings: finalVoiceSettings,
+    hasContext: !!(requestBody.previous_text || requestBody.next_text),
+    stitchingIds: previousRequestIds.length
+  });
 
   try {
     const response = await fetch(url, {
@@ -208,32 +148,25 @@ export async function ttsChunk(options: TTSOptions): Promise<TTSResponse> {
 
     if (!response.ok) {
       const errorText = await response.text();
-      
-      // Enhanced error handling for v3 models
-      let errorMessage = `ElevenLabs API error (${response.status}): ${errorText}`;
-      
-      if (isV3) {
-        // v3-specific error suggestions
-        if (response.status === 400) {
-          errorMessage += '\n🎭 v3 Troubleshooting: Check audio tag format and ensure enable_ssml_parsing=true';
-        } else if (response.status === 429) {
-          errorMessage += '\n🎭 v3 Note: v3 model may have different rate limits than v2 models';
-        } else if (response.status === 422) {
-          errorMessage += '\n🎭 v3 Hint: Verify voice compatibility with v3 model and audio tag support';
-        }
-      }
-      
-      throw new Error(errorMessage);
+      throw new Error(`ElevenLabs API error (${response.status}): ${errorText}`);
     }
 
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = Buffer.from(arrayBuffer);
+    const requestId = response.headers.get('request-id') || undefined;
+
+    console.log('✅ ElevenLabs v2 Success:', {
+      audioSize: audioBuffer.length,
+      requestId,
+      duration: `${Math.round(audioBuffer.length / 44100 / 2)}s (estimated)`
+    });
 
     return {
       audio: audioBuffer,
-      requestId: response.headers.get('request-id') || undefined,
+      requestId,
     };
   } catch (error) {
+    console.error('❌ ElevenLabs v2 Error:', error);
     if (error instanceof Error) {
       throw new Error(`TTS synthesis failed: ${error.message}`);
     }
@@ -258,18 +191,21 @@ export async function synthesizeChunks(
   }
 
   const modelId = baseOptions.modelId || process.env.ELEVEN_MODEL_ID || config.voice.model_id;
-  const isV3 = isV3Model(modelId);
   
-  console.log(`🚀 Processing ${chunks.length} chunks in ${isV3 ? 'parallel (v3)' : 'parallel'} mode`);
+  console.log(`🚀 Processing ${chunks.length} chunks with v2 request stitching for voice consistency`);
 
   // Prepare pronunciation dictionaries from config
   const pronunciationDictionaries = config.pronunciation?.default_dictionaries || [];
+  
+  // Track request IDs for stitching
+  const requestIds: string[] = [];
+  const results: Buffer[] = [];
 
-  // For v3 models, we can process completely in parallel since v3 has better context understanding
-  // For v2 models, we still process in parallel but include context
-  const chunkPromises = chunks.map(async (chunk, i) => {
-    const previousText = isV3 ? undefined : (i > 0 ? chunks[i - 1].slice(-300) : undefined);
-    const nextText = isV3 ? undefined : (i < chunks.length - 1 ? chunks[i + 1].slice(0, 300) : undefined);
+  // Process chunks sequentially to maintain request stitching chain
+  for (let i = 0; i < chunks.length; i++) {
+    const chunk = chunks[i];
+    const previousText = i > 0 ? chunks[i - 1].slice(-300) : undefined;
+    const nextText = i < chunks.length - 1 ? chunks[i + 1].slice(0, 300) : undefined;
 
     const options: TTSOptions = {
       text: chunk,
@@ -279,49 +215,44 @@ export async function synthesizeChunks(
       seed: baseOptions.seed || config.voice.seed,
       previousText,
       nextText,
+      previousRequestIds: requestIds.slice(-2), // Last 2 requests for consistency
       pronunciationDictionaries,
-      enableSSMLParsing: config.websocket?.enable_ssml_parsing || false,
+      enableSSMLParsing: config.emphasis?.use_ssml || false,
+      voiceSettings: {
+        stability: config.voice.settings.stability,
+        similarity_boost: config.voice.settings.similarity_boost,
+        style: config.voice.settings.style,
+        use_speaker_boost: config.voice.settings.speaker_boost,
+      },
     };
 
     const startTime = Date.now();
-    const result = await ttsChunk(options);
-    const endTime = Date.now();
-    
-    console.log(`📦 Chunk ${i + 1}/${chunks.length} synthesized in ${endTime - startTime}ms (${chunk.length} chars)`);
-    
-    return {
-      index: i,
-      audio: result.audio,
-      duration: endTime - startTime
-    };
-  });
-
-  // Process all chunks in parallel with rate limiting
-  const BATCH_SIZE = 5; // Process max 5 chunks simultaneously to avoid API rate limits
-  const results: { index: number; audio: Buffer; duration: number }[] = [];
-  
-  for (let i = 0; i < chunkPromises.length; i += BATCH_SIZE) {
-    const batch = chunkPromises.slice(i, i + BATCH_SIZE);
-    console.log(`🔄 Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(chunkPromises.length / BATCH_SIZE)} (${batch.length} chunks)`);
-    
-    const batchResults = await Promise.all(batch);
-    results.push(...batchResults);
-    
-    // Small delay between batches to be respectful to API
-    if (i + BATCH_SIZE < chunkPromises.length) {
-      await new Promise(resolve => setTimeout(resolve, 200));
+    try {
+      const result = await ttsChunk(options);
+      const endTime = Date.now();
+      
+      // Store request ID for next chunk's stitching
+      if (result.requestId) {
+        requestIds.push(result.requestId);
+      }
+      
+      results.push(result.audio);
+      
+      console.log(`📦 Chunk ${i + 1}/${chunks.length} synthesized in ${endTime - startTime}ms (${chunk.length} chars, requestId: ${result.requestId?.slice(-8)})`);
+      
+      // Small delay between requests for API stability
+      if (i < chunks.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    } catch (error) {
+      console.error(`❌ Failed to synthesize chunk ${i + 1}:`, error);
+      throw error;
     }
   }
-
-  // Sort results by index to maintain order
-  results.sort((a, b) => a.index - b.index);
   
-  const totalDuration = results.reduce((sum, r) => sum + r.duration, 0);
-  const avgDuration = totalDuration / results.length;
-  
-  console.log(`✅ Parallel synthesis complete: ${results.length} chunks in ${totalDuration}ms total (avg: ${Math.round(avgDuration)}ms per chunk)`);
+  console.log(`✅ Sequential synthesis with request stitching complete: ${results.length} chunks, ${requestIds.length} request IDs tracked`);
 
-  return results.map(r => r.audio);
+  return results;
 }
 
 /**
