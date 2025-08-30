@@ -68,9 +68,7 @@ punctuation:
 
 pronunciation:
   max_dictionaries: 3       # maximum pronunciation dictionaries to attach
-  default_dictionaries:    # always attach these if available
-    - "tarot-terms"
-    - "angela-custom"
+  default_dictionaries: []    # no pronunciation dictionaries configured yet
   break_clamp_ms: 2200      # maximum break time in milliseconds
 
 websocket:

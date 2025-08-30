@@ -532,87 +532,71 @@ export default function Home() {
             <div className="mb-6 p-6 bg-gradient-to-r from-yellow-50 to-amber-50 border-2 border-yellow-200 rounded-2xl">
               <h3 className="text-lg font-semibold text-amber-800 mb-4">📝 Annotated Script - Edit for Fine-Tuning</h3>
               
-              {/* Quick Punctuation Reference */}
-              <div className="mb-4 p-3 bg-white/70 rounded-lg border border-yellow-300">
-                <h4 className="text-sm font-semibold text-amber-800 mb-2">⏱️ Complete Timing Reference</h4>
+              {/* SSML Reference for V2 */}
+              <div className="mb-4 p-3 bg-white/70 rounded-lg border border-blue-300">
+                <h4 className="text-sm font-semibold text-blue-800 mb-2">⏱️ SSML Timing Reference (V2)</h4>
                 <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-1 text-xs text-gray-700">
-                  {/* Basic Punctuation */}
-                  <span><code className="bg-gray-100 px-1 rounded">.</code> Period = natural end</span>
-                  <span><code className="bg-gray-100 px-1 rounded">?</code> Question = ~0.7s pause</span>
-                  <span><code className="bg-gray-100 px-1 rounded">,</code> Comma = micro pause</span>
+                  {/* Break Times */}
+                  <span><code className="bg-blue-50 px-1 rounded">&lt;break time="0.5s"/&gt;</code> Short pause</span>
+                  <span><code className="bg-blue-50 px-1 rounded">&lt;break time="1.2s"/&gt;</code> Natural pause</span>
+                  <span><code className="bg-blue-50 px-1 rounded">&lt;break time="2.0s"/&gt;</code> Long pause</span>
                   
-                  {/* Ellipses & Pauses */}
-                  <span><code className="bg-gray-100 px-1 rounded">...</code> Ellipses = ~1.2s pause</span>
-                  <span><code className="bg-gray-100 px-1 rounded">word...</code> After keywords = contemplative</span>
-                  <span><code className="bg-gray-100 px-1 rounded">... Word</code> Before transitions = ~1.2s</span>
+                  {/* Prosody Rate */}
+                  <span><code className="bg-blue-50 px-1 rounded">rate="0.8"</code> Slower delivery</span>
+                  <span><code className="bg-blue-50 px-1 rounded">rate="1.1"</code> Faster delivery</span>
+                  <span><code className="bg-blue-50 px-1 rounded">rate="0.9"</code> Contemplative</span>
                   
-                  {/* Em-dashes */}
-                  <span><code className="bg-gray-100 px-1 rounded">—</code> Em-dash = ~1.8s shift</span>
-                  <span><code className="bg-gray-100 px-1 rounded">——</code> Double em-dash = ~3.5s major shift</span>
-                  <span><code className="bg-gray-100 px-1 rounded">— But</code> Emotional transitions</span>
+                  {/* Prosody Pitch */}
+                  <span><code className="bg-blue-50 px-1 rounded">pitch="-2st"</code> Lower pitch</span>
+                  <span><code className="bg-blue-50 px-1 rounded">pitch="+1st"</code> Higher pitch</span>
+                  <span><code className="bg-blue-50 px-1 rounded">volume="soft"</code> Whisper</span>
                   
-                  {/* Spacing & Paragraphs */}
-                  <span><code className="bg-gray-100 px-1 rounded">  </code> Double space = natural pause</span>
-                  <span><code className="bg-gray-100 px-1 rounded">\\n\\n</code> Paragraph = extended pause</span>
-                  <span><code className="bg-gray-100 px-1 rounded">\\n\\n\\n</code> Scene change = major break</span>
-                  
-                  {/* Contextual Timing */}
-                  <span><code className="bg-gray-100 px-1 rounded">card.</code> → <code className="bg-gray-100 px-1 rounded">card...</code> Auto-ellipses</span>
-                  <span><code className="bg-gray-100 px-1 rounded">listen</code> → <code className="bg-gray-100 px-1 rounded">listen...</code> Attention cues</span>
-                  <span><code className="bg-gray-100 px-1 rounded">think.</code> → <code className="bg-gray-100 px-1 rounded">think...</code> Reflection words</span>
+                  {/* Emphasis Levels */}
+                  <span><code className="bg-blue-50 px-1 rounded">level="moderate"</code> Key insight</span>
+                  <span><code className="bg-blue-50 px-1 rounded">level="strong"</code> Major point</span>
+                  <span><code className="bg-blue-50 px-1 rounded">level="reduced"</code> Subtle emphasis</span>
                 </div>
-                <div className="mt-2 pt-2 border-t border-yellow-200">
+                <div className="mt-2 pt-2 border-t border-blue-200">
                   <div className="mb-2">
-                    <p className="text-xs font-medium text-amber-800 mb-1">Internal Pause System (Angela&apos;s Voice Config):</p>
+                    <p className="text-xs font-medium text-blue-800 mb-1">Angela&apos;s V2 Voice Settings:</p>
                     <div className="grid grid-cols-2 lg:grid-cols-3 gap-1 text-xs text-gray-600">
-                      <span>Micro: 0.4s</span>
-                      <span>Beat: 0.7s</span>
-                      <span>Minor: 1.2s</span>
-                      <span>Shift: 1.8s</span>
-                      <span>Impact: 2.3s</span>
-                      <span>Major: 3.5s</span>
+                      <span>Stability: 0.35</span>
+                      <span>Similarity: 0.80</span>
+                      <span>Style: 0.20</span>
+                      <span>Speed: 0.85</span>
+                      <span>Speaker Boost: On</span>
+                      <span>Model: V2 Multilingual</span>
                     </div>
                   </div>
-                  <p className="text-xs text-amber-700 italic">
-                    💡 V3 uses natural punctuation for pacing - these are automatically applied during processing
+                  <p className="text-xs text-blue-700 italic">
+                    💡 V2 uses SSML tags for emotional delivery with cloned voice compatibility
                   </p>
                 </div>
               </div>
 
-              {/* Available Audio Tags */}
-              <div className="mb-4 p-3 bg-white/70 rounded-lg border border-yellow-300">
-                <h4 className="text-sm font-semibold text-amber-800 mb-3">🎭 Click to Copy Audio Tags</h4>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+              {/* Available SSML Patterns for V2 */}
+              <div className="mb-4 p-3 bg-white/70 rounded-lg border border-blue-300">
+                <h4 className="text-sm font-semibold text-blue-800 mb-3">🎙️ Click to Copy SSML Patterns (V2)</h4>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
                   {[
-                    // Breathing & Natural Sounds
-                    { tag: '[sighs]', desc: 'Natural sigh' },
-                    { tag: '[exhales]', desc: 'Breathing out' },
-                    { tag: '[inhales]', desc: 'Breathing in' },
-                    { tag: '[breathes deeply]', desc: 'Deep breath' },
-                    { tag: '[coughs]', desc: 'Natural cough' },
+                    // Natural Pauses & Breathing
+                    { tag: '<break time="1.2s"/>', desc: 'Natural pause' },
+                    { tag: '<break time="0.8s"/>', desc: 'Short pause' },
+                    { tag: '<break time="2.0s"/>', desc: 'Long pause' },
                     
-                    // Emotional Expressions
-                    { tag: '[chuckles]', desc: 'Light laugh' },
-                    { tag: '[sad]', desc: 'Melancholy tone' },
-                    { tag: '[happy]', desc: 'Joyful energy' },
-                    { tag: '[excited]', desc: 'High energy' },
-                    { tag: '[amazed]', desc: 'Wonder' },
-                    { tag: '[concerned]', desc: 'Gentle worry' },
-                    { tag: '[worried]', desc: 'Anxious tone' },
-                    { tag: '[thoughtful]', desc: 'Reflective wisdom' },
-                    { tag: '[confident]', desc: 'Assured delivery' },
+                    // Emotional Delivery via Prosody
+                    { tag: '<prosody rate="0.9" pitch="-2st">mystical text</prosody>', desc: 'Mysterious tone' },
+                    { tag: '<prosody volume="soft" rate="0.8">whispered text</prosody>', desc: 'Soft whisper' },
+                    { tag: '<prosody rate="1.1" pitch="+1st">excited text</prosody>', desc: 'Excited delivery' },
+                    { tag: '<prosody rate="0.8" pitch="-1st">contemplative text</prosody>', desc: 'Thoughtful pace' },
                     
-                    // Mystical & Spiritual
-                    { tag: '[mysterious]', desc: 'Mystical energy' },
-                    { tag: '[mystical]', desc: 'Spiritual tone' },
-                    { tag: '[curious]', desc: 'Wondering tone' },
-                    { tag: '[intrigued]', desc: 'Deep interest' },
+                    // Emphasis for Key Insights
+                    { tag: '<emphasis level="moderate">important text</emphasis>', desc: 'Key insight' },
+                    { tag: '<emphasis level="strong">crucial text</emphasis>', desc: 'Major point' },
                     
-                    // Delivery Styles
-                    { tag: '[whispers]', desc: 'Soft whisper' },
-                    { tag: '[slowly]', desc: 'Deliberate pace' },
-                    { tag: '[emphasizes]', desc: 'Key insight' },
-                    { tag: '[mischievously]', desc: 'Playful energy' }
+                    // Combined Patterns
+                    { tag: '<break time="0.5s"/><prosody rate="0.9">reflective text</prosody>', desc: 'Pause + reflection' },
+                    { tag: '<emphasis level="moderate">key point</emphasis><break time="1.0s"/>', desc: 'Emphasis + pause' }
                   ].map((item, index) => (
                     <button
                       key={index}

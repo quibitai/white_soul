@@ -21,38 +21,17 @@ export interface PronunciationDictionary {
  * Built-in pronunciation dictionaries
  */
 const BUILT_IN_DICTIONARIES: Record<string, PronunciationDictionary> = {
-  'tarot-terms': {
-    id: 'tarot-terms',
-    name: 'Tarot Terms',
-    description: 'Common tarot card and reading terminology',
-    priority: 100,
-    rules: [
-      { word: 'Arcana', pronunciation: 'ar-KAY-nah', type: 'phonetic' },
-      { word: 'Pentacles', pronunciation: 'PEN-tah-kuls', type: 'phonetic' },
-      { word: 'Wands', pronunciation: 'WANDS', type: 'phonetic' },
-      { word: 'Swords', pronunciation: 'SORDS', type: 'phonetic' },
-      { word: 'Cups', pronunciation: 'KUPS', type: 'phonetic' },
-      { word: 'Hierophant', pronunciation: 'HIGH-er-oh-fant', type: 'phonetic' },
-      { word: 'Temperance', pronunciation: 'TEM-per-ance', type: 'phonetic' },
-      { word: 'Magician', pronunciation: 'mah-JISH-an', type: 'phonetic' },
-      { word: 'Hermit', pronunciation: 'HER-mit', type: 'phonetic' },
-      { word: 'Chariot', pronunciation: 'CHAR-ee-ot', type: 'phonetic' },
-    ],
-  },
-  'angela-custom': {
-    id: 'angela-custom',
-    name: 'Angela Custom',
-    description: 'Angela-specific pronunciation preferences',
-    priority: 200,
-    rules: [
-      { word: 'literally', pronunciation: 'LIT-er-al-ly', type: 'phonetic' },
-      { word: 'kinda', pronunciation: 'KIND-ah', type: 'phonetic' },
-      { word: 'you guys', pronunciation: 'you GUYS', type: 'phonetic' },
-      { word: 'you all', pronunciation: 'you ALL', type: 'phonetic' },
-      { word: 'weird', pronunciation: 'WEIRD', type: 'phonetic' },
-      { word: 'ugh', pronunciation: 'UGH', type: 'phonetic' },
-    ],
-  },
+  // Note: Pronunciation dictionaries must be created in ElevenLabs dashboard first
+  // Example configuration when dictionaries are available:
+  // 'tarot-terms': {
+  //   id: 'tarot-terms',
+  //   name: 'Tarot Terms',
+  //   description: 'Common tarot card and reading terminology',
+  //   priority: 100,
+  //   rules: [
+  //     { word: 'Arcana', pronunciation: 'ar-KAY-nah', type: 'phonetic' },
+  //   ]
+  // }
 };
 
 /**
