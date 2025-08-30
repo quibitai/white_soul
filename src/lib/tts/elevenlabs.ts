@@ -7,8 +7,7 @@ import { VoiceConfig } from '../styling/config';
 import { 
   sanitizeForModel, 
   getModelCapabilities, 
-  getRecommendedSettings, 
-  supportsWebSocket
+  getRecommendedSettings
 } from './model-caps';
 // import { selectDictionaries, toElevenLabsFormat } from './pronunciation'; // Temporarily disabled
 

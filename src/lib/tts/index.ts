@@ -18,11 +18,6 @@ export {
   validateTextForModel,
   getRecommendedSettings,
   supportsWebSocket,
-  supportsAudioTags,
-  getV3StabilityValue,
-  isV3Model,
-  validateV3Configuration,
-  getV3OptimalSettings,
   type ModelCapabilities,
   MODEL_CAPS,
 } from './model-caps';

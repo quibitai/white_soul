@@ -228,7 +228,12 @@ async function processV3OptimizedMode(text: string, config: VoiceConfig, output:
       report: { 
         warnings: [],
         bans: [],
-        stats: { words: taggedText.split(' ').length, sentences: taggedText.split(/[.!?]+/).length - 1 }
+        stats: { 
+          words: taggedText.split(' ').length, 
+          sentences: taggedText.split(/[.!?]+/).length - 1,
+          groupAddressRatio: 0,
+          consecutiveGroupAddress: 0
+        }
       },
       configVersion: 'v3-pure-2025',
       originalText: text,
@@ -289,7 +294,12 @@ async function processDirectMode(text: string, config: VoiceConfig, output: stri
       report: { 
         warnings: [],
         bans: [],
-        stats: { words: text.split(' ').length, sentences: text.split(/[.!?]+/).length - 1 }
+        stats: { 
+          words: text.split(' ').length, 
+          sentences: text.split(/[.!?]+/).length - 1,
+          groupAddressRatio: 0,
+          consecutiveGroupAddress: 0
+        }
       },
       configVersion: 'direct-2025',
       originalText: text,
@@ -368,14 +378,18 @@ async function processAngelaV3Mode(text: string, config: VoiceConfig, output: st
     console.log('🎭 Audio tags:', audioTagMatches.slice(0, 5));
     
     const manifestId = await saveManifest(pureChunks, {
-      config,
-      metadata: {
-        processingMode: 'angela_v3',
-        originalLength: text.length,
-        processedLength: taggedText.length,
-        audioTags: audioTagMatches.length,
-        timestamp: new Date().toISOString()
-      }
+      report: {
+        warnings: [],
+        bans: [],
+        stats: {
+          words: taggedText.split(' ').length,
+          sentences: taggedText.split(/[.!?]+/).length - 1,
+          groupAddressRatio: 0,
+          consecutiveGroupAddress: 0
+        }
+      },
+      configVersion: 'angela_v2',
+      originalText: text,
     });
 
     const stats = {

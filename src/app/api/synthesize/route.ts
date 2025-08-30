@@ -16,12 +16,9 @@ import {
   synthesizeChunks,
   concatAudioBuffers,
   validateElevenLabsConfig,
-  selectOptimalModel,
   getModelOptimizedSettings,
-  isV3Model,
-  getV3StabilityValue,
 } from '@/lib/tts';
-import { loadConfig } from '@/lib/styling';
+import { loadConfig, type VoiceConfig } from '@/lib/styling';
 
 /**
  * Request schema validation
@@ -97,7 +94,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const baseModelId = modelId || process.env.ELEVEN_MODEL_ID || config.voice.model_id;
     
     // Analyze content to determine optimal model (using full chunk objects)
-    const contentStats = analyzeContentForModelSelection(fullChunks, manifest);
+    const contentStats = analyzeContentForModelSelection(fullChunks);
     const smartModelId = selectModelForContent(contentStats, config, baseModelId);
     const finalModelId = modelId || smartModelId; // Use provided model or smart selection
     
@@ -112,28 +109,19 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Get model-optimized voice settings with v3 enhancements
     const optimizedSettings = getModelOptimizedSettings(finalModelId, 'full');
-    let finalVoiceSettings = {
+    const finalVoiceSettings = {
       ...optimizedSettings,
       ...config.voice.settings, // Override with config settings
     };
 
-    // Apply v3-specific optimizations
-    if (isV3Model(finalModelId)) {
-      // Use the stability mode from config if available
-      const stabilityMode = config.voice.stability_mode || 'creative';
-      finalVoiceSettings = {
-        ...finalVoiceSettings,
-        stability: getV3StabilityValue(stabilityMode),
-        similarity_boost: Math.max(finalVoiceSettings.similarity_boost || 0.85, 0.85),
-        style: 0.0, // Not used in v3
-      };
-      
-      console.log('🎭 v3 Synthesis Optimizations Applied:', {
-        stabilityMode,
-        stabilityValue: finalVoiceSettings.stability,
-        similarity_boost: finalVoiceSettings.similarity_boost
-      });
-    }
+    // v2 voice settings are already configured in angela-voice.yaml
+    console.log('🎙️ v2 Synthesis Settings:', {
+      model: finalModelId,
+      stability: finalVoiceSettings.stability,
+      similarity_boost: finalVoiceSettings.similarity_boost,
+      style: finalVoiceSettings.style,
+      speaker_boost: finalVoiceSettings.speaker_boost
+    });
 
     // Synthesize all chunks with enhanced settings
     const audioBuffers = await synthesizeChunks(textChunks, config, {
@@ -224,7 +212,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 /**
  * Analyzes content characteristics to determine optimal model selection
  */
-function analyzeContentForModelSelection(textChunks: { id: number; body: string; charCount: number; estSeconds: number }[], manifest: any) {
+function analyzeContentForModelSelection(textChunks: { id: number; body: string; charCount: number; estSeconds: number }[]) {
   console.log('📊 Content Analysis Debug:', {
     chunkCount: textChunks.length,
     sampleChunk: textChunks[0] ? {
@@ -276,42 +264,27 @@ function analyzeContentForModelSelection(textChunks: { id: number; body: string;
 /**
  * Selects the best model based on content analysis
  */
-function selectModelForContent(stats: any, config: VoiceConfig, fallbackModel: string) {
-  console.log('🎯 Content Analysis for Model Selection:', {
+function selectModelForContent(stats: { totalEstSeconds: number; chunkCount: number; avgChunkSize: number }, config: VoiceConfig, fallbackModel: string) {
+  console.log('🎯 v2 Model Selection:', {
     duration: `${Math.round(stats.totalEstSeconds / 60)}m ${Math.round(stats.totalEstSeconds % 60)}s`,
     chunks: stats.chunkCount,
     avgChunkSize: Math.round(stats.avgChunkSize),
-    audioTags: stats.audioTagCount,
-    tagDensity: Math.round(stats.audioTagDensity * 100) / 100,
-    isLongForm: stats.isLongForm,
-    hasComplexEmotions: stats.hasComplexEmotions
   });
 
-  // CRITICAL: Prioritize audio tag compatibility over everything else
-  if (stats.audioTagCount > 0) {
-    const v3Model = 'eleven_v3';
-    console.log(`🎭 Audio tags detected (${stats.audioTagCount} tags): using ${v3Model} for compatibility (overriding long-form preference)`);
-    return v3Model;
+  // Use model selection from config based on content type
+  const modelSelection = config.model_selection as any || {};
+  
+  // Long-form content (>3 minutes) - use efficient model
+  if (stats.totalEstSeconds > 180) {
+    const longFormModel = modelSelection.long_form || 'eleven_multilingual_v2';
+    console.log(`📚 Long-form content detected (${Math.round(stats.totalEstSeconds / 60)}+ minutes): using ${longFormModel}`);
+    return longFormModel;
   }
   
-  // If user has explicitly configured long_form model and this is long content with no audio tags, use it
-  if (stats.isLongForm && config.model_selection?.long_form) {
-    console.log(`🏃‍♂️ Using long-form model: ${config.model_selection.long_form} (content: ${Math.round(stats.totalEstSeconds / 60)}m, no audio tags)`);
-    return config.model_selection.long_form;
-  }
-  
-  // Fallback logic for content without audio tags:
-  if (stats.isLongForm) {
-    // Long content with no audio tags - use turbo for speed and consistency
-    const turboModel = 'eleven_turbo_v2_5';
-    console.log(`🏃‍♂️ Long content with no audio tags: using ${turboModel} for performance`);
-    return turboModel;
-  }
-  
-  // Medium content or balanced case - use configured default
-  const defaultModel = fallbackModel || 'eleven_v3';
-  console.log(`⚖️ Balanced content: using configured default ${defaultModel}`);
-  return defaultModel;
+  // Standard content - use configured full model (always v2 for cloned voice)
+  const standardModel = modelSelection.full || fallbackModel;
+  console.log(`📝 Standard content: using ${standardModel}`);
+  return standardModel;
 }
 
 /**
