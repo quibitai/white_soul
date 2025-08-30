@@ -47,9 +47,9 @@ function applyPauseMacros(text: string, config: VoiceConfig): string {
     ',': `<pause:${config.pacing.pauses.micro}>`, // WST2: very slight hesitation
     ';': `<pause:${config.pacing.pauses.beat}>`,  // WST2: micro-beat for rhythmic control
     ':': `<pause:${config.pacing.pauses.beat}>`,  // WST2: micro-beat for rhythmic control
-    '.': `<pause:${config.pacing.pauses.minor}>`, // WST2: minor beat after statements
+    '.': `<pause:${config.pacing.pauses.pause}>`, // Natural pause after statements
     '!': `<pause:${config.pacing.pauses.shift}>`, // WST2: emotional shift for exclamations
-    '?': `<pause:${config.pacing.pauses.minor}>`, // WST2: minor beat after questions
+    '?': `<pause:${config.pacing.pauses.pause}>`, // Natural pause after questions
   };
 
   // Apply basic punctuation pauses
@@ -67,13 +67,13 @@ function applyPauseMacros(text: string, config: VoiceConfig): string {
   // Handle em-dash with medium pause
   processed = processed.replace(
     /\s*--\s*/g, 
-    ` <pause:${config.pacing.pauses.minor}> ` // WST2: minor beat for em-dash
+    ` <pause:${config.pacing.pauses.pause}> ` // Natural pause for em-dash
   );
 
-  // Add longer pauses after paragraph breaks
+  // Add pauses after paragraph breaks
   processed = processed.replace(
     /\n\n+/g, 
-    `\n<pause:${config.pacing.pauses.major}>\n` // WST2: major mood shift for paragraph breaks
+    `\n<pause:${config.pacing.pauses.shift}>\n` // Topic shift for paragraph breaks
   );
 
   // Handle reflective/contemplative phrases with slight rate adjustment

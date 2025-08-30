@@ -2,25 +2,24 @@ voice:
   voice_id: "ELEVEN_VOICE_ID"
   model_id: "eleven_multilingual_v2"  # v2 for cloned voice compatibility
   settings:
-    stability: 0.35         # Balanced stability for Angela's contemplative delivery
-    similarity_boost: 0.80  # Voice consistency for cloned voice
-    style: 0.20            # Subtle emotional variation
+    stability: 0.42         # ↑ More natural variation while maintaining consistency
+    similarity_boost: 0.80  # Voice consistency for cloned voice (optimal)
+    style: 0.28            # ↑ Increased emotional range for better expression
     speaker_boost: true     # Enhances clarity and presence
-    speed: 0.85            # Slower, more contemplative pace for mystical content
-    quality: "enhanced"     # Enhanced quality for professional output
+    speed: 0.94            # ↑ More natural pace (closer to 1.0 per ElevenLabs best practices)
+    quality: "enhanced"     # V2 optimization for professional output
   seed: 123456            # Deterministic generation for consistency
 
 pacing:
-  wpm: 135               # Reduced from 145 for more contemplative delivery
+  wpm: 142               # ↑ Compensate for speed increase while maintaining natural flow
   pauses:
-    # WST2 Studio Speech Rules - Break Tag System - Enhanced for natural pacing
-    micro: 400            # 0.4s - very slight hesitation or hard emphasis cutoff (was 0.3s)
-    beat: 700             # 0.7s - micro-beat for rhythmic control or emphasis (was 0.5s)
-    minor: 1200           # 1.2s - minor beat; after punchlines, pivots, or slight reflection (was 1.0s)
-    shift: 1800           # 1.8s - emotional shift, impact line landing, paragraph break (was 1.5s)
-    impact: 2300          # 2.3s - emotional shift, impact line landing, paragraph break (was 2.0s)
-    major: 3500           # 3.5s - major mood shift, breath reset, scene change, or emotional floor drop (was 3.0s)
-  reflective_rate_delta_pct: -3  # Slightly more reflective pacing adjustment
+    # Simplified break system - fewer categories, shorter durations for V2 optimization
+    micro: 300            # ↓ 0.3s - subtle hesitation (reduced from 400ms)
+    beat: 600             # ↓ 0.6s - natural rhythm (reduced from 700ms) 
+    pause: 1000           # ↓ 1.0s - comfortable break (was minor: 1200ms)
+    shift: 1600           # ↓ 1.6s - topic transition (reduced from 1800ms)
+    # Removed: impact (2300ms) and major (3500ms) - too long per ElevenLabs best practices
+  reflective_rate_delta_pct: -2  # ↑ Less dramatic pacing adjustment for more natural flow
 
 tone:
   allow: ["kinda","literally","ugh","you know","I mean","so yeah","still","weird"]
@@ -46,12 +45,12 @@ group_address:
 
 
 chunking:
-  target_seconds: 25          # Slightly shorter for better pacing control (was 30)
-  max_chars: 2200             # Reduced slightly for more natural breaks (was 2500)
-  min_chars: 900              # Increased minimum for substantial chunks (was 800)
+  target_seconds: 22          # ↓ Optimized for V2 processing efficiency
+  max_chars: 2000             # ↓ More manageable chunks for better V2 handling
+  min_chars: 1000             # ↑ Substantial content per chunk for consistency
   guardrails:
-    start_with_micro_pause: true   # Re-enabled for natural chunk transitions
-    end_with_short_pause: true     # Re-enabled for breathing room between chunks
+    start_with_micro_pause: true   # Natural chunk transitions
+    end_with_short_pause: true     # Breathing room between chunks
 
 punctuation:
   # WST2 Studio Speech Rules - Punctuation + Space Logic
@@ -94,10 +93,10 @@ sound_effects:
   max_effects_per_chunk: 1         # Limit sound effects to avoid overwhelming
 
 conversational_realism:
-  you_guys_ratio: 0.35      # 35% of "you" should be "you guys"
-  verbal_hesitation_ratio: 0.35  # 35% of breaks replaced with verbal cues (increased for more natural flow)
-  run_on_sentence_ratio: 0.20    # 20% less sentence combining for clearer pacing (was 30%)
-  all_caps_frequency: 0.12       # 12% slightly reduced emphasis for calmer delivery (was 15%)
+  you_guys_ratio: 0.22      # ↓ More professional tone for tarot readings
+  verbal_hesitation_ratio: 0.25  # ↓ Cleaner delivery with fewer hesitations
+  run_on_sentence_ratio: 0.18    # ↓ Clearer sentence structure
+  all_caps_frequency: 0.10       # ↓ More controlled emphasis for professional delivery
   avoid_repetitive_negation: true # Reduce "it's not X, it's not Y" patterns
   mystical_vocabulary: true      # Ground overly mystical language in accessible terms
 
@@ -108,29 +107,32 @@ emphasis:
   caps_max_per_clause: 1
   caps_max_per_sentence: 2
   
-  # SSML-based emotional delivery for v2 (replaces v3 audio tags)
+  # Refined SSML emotional delivery - fewer triggers, more targeted effects
   emotional_patterns:
-    # Natural pauses and breathing
+    # Natural pauses and breathing (reduced intensity)
     breaths: 
-      ssml: '<break time="1.2s"/>'
-      triggers: ["pause", "wait", "moment", "breath", "think", "reflect", "consider", "deep", "silence", "quiet", "still", "slowly", "gently"]
+      ssml: '<break time="0.8s"/>'  # ↓ Shorter pause for more natural flow
+      triggers: ["pause", "breath", "think", "reflect", "deep"]  # ↓ Reduced trigger list
     
-    # Emotional expressions via prosody
+    # Mystical content (more subtle prosody)
     mystery:
-      ssml: '<prosody rate="0.9" pitch="-2st">{text}</prosody>'
-      triggers: ["mysterious", "reveal", "unveil", "tarot", "divine", "spiritual", "high priestess", "priestess", "mystic", "ancient", "sacred", "intuition", "inner knowing", "cosmic", "universal", "wisdom", "arcana", "cards", "reading", "oracle", "veil", "behind", "beneath"]
+      ssml: '<prosody rate="0.95" pitch="-1st">{text}</prosody>'  # ↓ More subtle adjustments
+      triggers: ["tarot", "divine", "mystic", "sacred", "arcana"]  # ↓ Core mystical terms only
     
+    # Intimate delivery (refined)
     whispers:
-      ssml: '<prosody volume="soft" rate="0.8">{text}</prosody>'
-      triggers: ["secret", "private", "intimate", "personal", "quiet", "soft", "gentle", "tender", "close", "whisper", "between us"]
+      ssml: '<prosody volume="soft" rate="0.9">{text}</prosody>'  # ↑ Less dramatic rate change
+      triggers: ["secret", "intimate", "whisper"]  # ↓ Focused triggers only
     
+    # Key insights (unchanged - works well)
     emphasis:
       ssml: '<emphasis level="moderate">{text}</emphasis>'
-      triggers: ["important", "key", "crucial", "vital", "essential", "remember", "listen", "pay attention", "focus", "understand this", "here's the thing"]
+      triggers: ["important", "key", "essential", "remember"]  # ↓ Core emphasis words
     
+    # Energetic content (more controlled)
     excitement:
-      ssml: '<prosody rate="1.1" pitch="+1st">{text}</prosody>'
-      triggers: ["amazing", "incredible", "powerful", "energy", "transformation", "freedom", "liberation", "breakthrough", "shift", "change", "unleashed", "release", "boundaries", "limits", "break free"]
+      ssml: '<prosody rate="1.05" pitch="+0.5st">{text}</prosody>'  # ↓ More subtle energy boost
+      triggers: ["powerful", "transformation", "breakthrough"]  # ↓ Key energy words only
 
 speech_patterns:
   hesitation_cues:
@@ -141,29 +143,21 @@ speech_patterns:
     - "I mean"
   
   emphasis_words:
-    # WST2 Studio Speech Rules - ALL CAPS Emphasis
-    # Used sparingly on emotionally loaded or rhythmically sharp words
-    # For: internal voice surges, sarcastic emphasis, exasperation, spiraling, reactivity
-    - "much"
-    - "fully" 
-    - "disappear"
-    - "yikes"
-    - "everything"
+    # Refined emphasis list - focus on truly impactful words for professional delivery
+    # Core energy concepts
     - "power"
-    - "energy"
-    - "truth"
+    - "truth" 
     - "clarity"
-    - "space"
-    - "move"
-    - "feel"
-    - "see"
-    - "know"
-    - "trust"
-    - "really"
-    - "totally"
-    - "literally"
-    - "actually"
+    - "transformation"
+    - "breakthrough"
+    # Key insight markers
+    - "essential"
+    - "crucial"
     - "exactly"
+    # Confirmation words
+    - "absolutely"
+    - "totally"
+    # Removed: casual words like "yikes", "much", "literally" for more professional tone
   
   mystical_replacements:
     # Inverted: Replace mystical terms with grounded language

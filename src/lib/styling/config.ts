@@ -32,10 +32,9 @@ const VoiceConfigSchema = z.object({
     pauses: z.object({
       micro: z.number(),
       beat: z.number(),
-      minor: z.number(),
+      pause: z.number(),  // Renamed from 'minor' for clarity
       shift: z.number(),
-      impact: z.number(),
-      major: z.number(),
+      // Removed: impact and major (too long for V2 best practices)
     }),
     reflective_rate_delta_pct: z.number(),
   }),
