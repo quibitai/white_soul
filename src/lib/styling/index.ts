@@ -28,8 +28,8 @@ export { applyWST2Rules, validateWST2Rules, analyzeWST2Compliance } from './wst2
 // TTS Sanitization
 export { sanitizeForTTS, analyzeTTSArtifacts } from './sanitizer';
 
-// Audio Tags & Emotional Delivery
-export { applyAudioTags, analyzeAudioTagOpportunities, validateAudioTags } from './audio-tags';
+// Audio Tags & Emotional Delivery (Legacy V3)
+export { applyAudioTags, analyzeV3TagOpportunities, validateV3AudioTags } from './audio-tags';
 
 // Natural Processing for ElevenLabs v3
 export { 

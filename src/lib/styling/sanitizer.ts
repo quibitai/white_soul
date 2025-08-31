@@ -12,9 +12,9 @@ import { VoiceConfig } from './config';
 function generateAudioTagPattern(config: VoiceConfig): RegExp {
   const allTags: string[] = [];
   
-  // Extract all emotional tags from config
-  if (config.audio_tags?.emotional_tags) {
-    Object.values(config.audio_tags.emotional_tags).forEach(tagArray => {
+  // V2 no longer uses audio_tags - return basic pattern for legacy V3 tags
+  if (false && config.audio_tags?.emotional_tags) {
+    Object.values(config.audio_tags?.emotional_tags || {}).forEach(tagArray => {
       if (Array.isArray(tagArray)) {
         tagArray.forEach(tag => {
           // Remove brackets and escape special regex characters
@@ -26,8 +26,8 @@ function generateAudioTagPattern(config: VoiceConfig): RegExp {
   }
   
   // Extract ambient effects if they exist
-  if (config.audio_tags?.ambient_effects) {
-    Object.values(config.audio_tags.ambient_effects).forEach(tagArray => {
+  if (false && config.audio_tags?.ambient_effects) {
+    Object.values(config.audio_tags?.ambient_effects || {}).forEach(tagArray => {
       if (Array.isArray(tagArray)) {
         tagArray.forEach(tag => {
           const cleanTag = tag.replace(/[\[\]]/g, '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -56,7 +56,7 @@ export function sanitizeForTTS(text: string, config: VoiceConfig): string {
   let sanitized = text;
 
   // Remove common metadata artifacts that can be spoken by TTS
-  sanitized = removeMetadataArtifacts(sanitized);
+  sanitized = removeMetadataArtifacts(sanitized, config);
   
   // Model-aware processing: remove incompatible tags for target model
   sanitized = removeModelIncompatibleTags(sanitized, config);
@@ -76,7 +76,7 @@ export function sanitizeForTTS(text: string, config: VoiceConfig): string {
 /**
  * Removes common metadata artifacts that TTS might speak
  */
-function removeMetadataArtifacts(text: string): string {
+function removeMetadataArtifacts(text: string, config: VoiceConfig): string {
   let cleaned = text;
 
   // Remove standalone metadata words that commonly get spoken

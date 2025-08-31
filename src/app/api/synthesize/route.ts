@@ -272,17 +272,17 @@ function selectModelForContent(stats: { totalEstSeconds: number; chunkCount: num
   });
 
   // Use model selection from config based on content type
-  const modelSelection = config.model_selection as any || {};
+  const modelSelection = config.model_selection;
   
   // Long-form content (>3 minutes) - use efficient model
   if (stats.totalEstSeconds > 180) {
-    const longFormModel = modelSelection.long_form || 'eleven_multilingual_v2';
+    const longFormModel = modelSelection?.long_form || 'eleven_multilingual_v2';
     console.log(`📚 Long-form content detected (${Math.round(stats.totalEstSeconds / 60)}+ minutes): using ${longFormModel}`);
     return longFormModel;
   }
   
   // Standard content - use configured full model (always v2 for cloned voice)
-  const standardModel = modelSelection.full || fallbackModel;
+  const standardModel = modelSelection?.full || fallbackModel;
   console.log(`📝 Standard content: using ${standardModel}`);
   return standardModel;
 }

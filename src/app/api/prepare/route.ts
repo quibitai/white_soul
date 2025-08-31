@@ -11,10 +11,7 @@ import {
   applyMacros,
   applyConversationalRealism,
   toSSML,
-  extractTextFromSSML,
   chunk,
-  type TextChunk,
-  type LintReport,
   type VoiceConfig,
 } from '@/lib/styling';
 import { saveManifest } from '@/lib/store';
@@ -31,28 +28,7 @@ const PrepareRequestSchema = z.object({
 
 
 
-/**
- * Response interface for V2 SSML processing
- */
-interface PrepareResponse {
-  manifestId: string;
-  chunks: Array<{
-    id: number;
-    body: string;
-    estSeconds: number;
-  }>;
-  report: LintReport;
-  processing?: {
-    originalText: string;
-    conversational: string;
-    withMacros: string;
-    finalOutput: string;
-    pipeline: Array<{
-      step: string;
-      description: string;
-    }>;
-  };
-}
+// PrepareResponse interface removed - using inline response types
 
 /**
  * POST /api/prepare
@@ -85,7 +61,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Angela V2 SSML Processing - Only supported mode
     console.log('🎙️ Using Angela V2 SSML Processing Mode');
-    return await processAngelaV2Mode(text, config, output);
+    return await processAngelaV2Mode(text, config);
 
   } catch (error) {
     console.error('Error in /api/prepare:', error);
@@ -184,7 +160,7 @@ export async function GET(): Promise<NextResponse> {
  * Angela V2 SSML Processing Mode - Clean pipeline for v2 with SSML emotional delivery
  * Applies Angela's voice rules with SSML tags for cloned voice compatibility
  */
-async function processAngelaV2Mode(text: string, config: VoiceConfig, output: string) {
+async function processAngelaV2Mode(text: string, config: VoiceConfig) {
   try {
     console.log('🎙️ Angela V2 SSML Pipeline - Processing with SSML emotional delivery');
     console.log('📝 Input text:', text.substring(0, 100) + '...');

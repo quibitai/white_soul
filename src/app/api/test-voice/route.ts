@@ -65,7 +65,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     const audioFormat = format.startsWith('mp3') ? 'mp3' : 'wav';
     const contentType = format.startsWith('mp3') ? 'audio/mpeg' : 'audio/wav';
 
-    return new NextResponse(result.audio, {
+    return new NextResponse(result.audio as BodyInit, {
       status: 200,
       headers: {
         'Content-Type': contentType,

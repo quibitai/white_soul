@@ -51,7 +51,7 @@ function applyContextualTags(text: string, config: VoiceConfig): string {
   const sentences = text.split(/(?<=[.!?])\s+/);
   let tagsUsed = 0;
   
-  const processedSentences = sentences.map((sentence, index) => {
+  const processedSentences = sentences.map((sentence, _index) => {
     // Avoid over-tagging
     if (tagsUsed >= max_tags_per_chunk) {
       return sentence;

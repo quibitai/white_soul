@@ -189,7 +189,8 @@ export async function synthesizeChunks(
     return [];
   }
 
-  const modelId = baseOptions.modelId || process.env.ELEVEN_MODEL_ID || config.voice.model_id;
+  // Model ID determined from baseOptions, env, or config
+  const _modelId = baseOptions.modelId || process.env.ELEVEN_MODEL_ID || config.voice.model_id;
   
   console.log(`🚀 Processing ${chunks.length} chunks with v2 request stitching for voice consistency`);
 
