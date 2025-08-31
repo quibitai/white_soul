@@ -24,9 +24,12 @@ export function toSSML(textWithMacros: string, config: VoiceConfig): string {
 
   let ssml = textWithMacros;
 
-  // Convert pause macros to SSML breaks with clamping
+  // Convert pause macros to SSML breaks with clamping and minimum validation
   ssml = ssml.replace(/<pause:(\d+)>/g, (_, ms) => {
-    const clampedMs = Math.min(parseInt(ms), config.pronunciation.break_clamp_ms);
+    const parsedMs = parseInt(ms);
+    // Ensure minimum 100ms to prevent abrupt cutoffs
+    const minMs = Math.max(parsedMs, 100);
+    const clampedMs = Math.min(minMs, config.pronunciation.break_clamp_ms);
     const seconds = (clampedMs / 1000).toFixed(clampedMs % 1000 === 0 ? 0 : 1);
     return `<break time="${seconds}s"/>`;
   });
@@ -125,20 +128,41 @@ function validateAndCleanSSML(ssml: string, config: VoiceConfig): string {
   // Remove empty prosody tags
   cleaned = cleaned.replace(/<prosody[^>]*>\s*<\/prosody>/g, '');
 
+  // Fix malformed break tags (remove invalid // syntax)
+  cleaned = cleaned.replace(/<break([^>]*?)\/\/>/g, '<break$1/>');
+  cleaned = cleaned.replace(/<break([^>]*?)\/\/\s*>/g, '<break$1/>');
+  
   // Fix break tags (ensure self-closing)
   cleaned = cleaned.replace(/<break([^>]*)>(?!\s*<\/break>)/g, '<break$1/>');
   cleaned = cleaned.replace(/<break([^>]*)><\/break>/g, '<break$1/>');
 
-  // Ensure break time values are valid using config limits
+  // Ensure break time values are valid using config limits and minimum duration
   cleaned = cleaned.replace(/time="(\d+(?:\.\d+)?)s?"/g, (match, value) => {
-    const timeMs = parseFloat(value) * (value.includes('.') ? 1000 : 1);
-    const maxMs = config.pronunciation.break_clamp_ms;
-    if (timeMs > maxMs) {
-      const clampedSeconds = (maxMs / 1000).toFixed(maxMs % 1000 === 0 ? 0 : 1);
-      return `time="${clampedSeconds}s"`;
+    const timeSeconds = parseFloat(value);
+    const maxSeconds = config.pronunciation.break_clamp_ms / 1000;
+    
+    // Enforce minimum 0.1s to prevent abrupt cutoffs
+    const minSeconds = 0.1;
+    const clampedSeconds = Math.max(minSeconds, Math.min(timeSeconds, maxSeconds));
+    
+    return `time="${clampedSeconds.toFixed(1)}s"`;
+  });
+
+  // Remove consecutive break tags (merge into single longer break)
+  cleaned = cleaned.replace(/(<break[^>]*\/>)\s*(<break[^>]*\/>)/g, (match, break1, break2) => {
+    // Extract time values and combine them
+    const time1Match = break1.match(/time="([\d.]+)s"/);
+    const time2Match = break2.match(/time="([\d.]+)s"/);
+    
+    if (time1Match && time2Match) {
+      const combinedTime = Math.min(
+        parseFloat(time1Match[1]) + parseFloat(time2Match[1]),
+        config.pronunciation.break_clamp_ms / 1000
+      );
+      return `<break time="${combinedTime.toFixed(1)}s"/>`;
     }
-    if (timeMs < 0) return 'time="0s"';
-    return match;
+    
+    return break1; // Keep first break if parsing fails
   });
 
   // Remove excessive whitespace within SSML

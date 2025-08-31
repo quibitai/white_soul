@@ -52,10 +52,10 @@ function applyPauseMacros(text: string, config: VoiceConfig): string {
     '?': `<pause:${config.pacing.pauses.pause}>`, // Natural pause after questions
   };
 
-  // Apply basic punctuation pauses
+  // Apply basic punctuation pauses with proper spacing
   for (const [punct, macro] of Object.entries(pauseMap)) {
     const regex = new RegExp(`\\${punct}(\\s+)`, 'g');
-    processed = processed.replace(regex, `${punct}${macro}$1`);
+    processed = processed.replace(regex, `${punct} ${macro}$1`);
   }
 
   // Handle ellipsis with longer pause
