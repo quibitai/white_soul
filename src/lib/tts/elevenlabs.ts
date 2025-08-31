@@ -215,7 +215,7 @@ export async function synthesizeChunks(
       seed: baseOptions.seed || config.voice.seed,
       previousText,
       nextText,
-      previousRequestIds: requestIds.slice(-2), // Last 2 requests for consistency
+      previousRequestIds: requestIds.slice(-3), // Last 3 requests for better consistency
       pronunciationDictionaries,
       enableSSMLParsing: config.emphasis?.use_ssml || false,
       voiceSettings: {
@@ -240,9 +240,13 @@ export async function synthesizeChunks(
       
       console.log(`📦 Chunk ${i + 1}/${chunks.length} synthesized in ${endTime - startTime}ms (${chunk.length} chars, requestId: ${result.requestId?.slice(-8)})`);
       
-      // Small delay between requests for API stability
+      // Enhanced delay between requests for voice consistency and API stability
       if (i < chunks.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Progressive delay: longer for first few chunks to establish voice consistency
+        const baseDelay = 300; // Increased from 100ms
+        const progressiveDelay = i < 3 ? baseDelay + (i * 100) : baseDelay;
+        console.log(`⏱️ Waiting ${progressiveDelay}ms for voice consistency (chunk ${i + 1}/${chunks.length})`);
+        await new Promise(resolve => setTimeout(resolve, progressiveDelay));
       }
     } catch (error) {
       console.error(`❌ Failed to synthesize chunk ${i + 1}:`, error);

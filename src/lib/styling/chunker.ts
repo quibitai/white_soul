@@ -67,16 +67,18 @@ export function chunk(processedText: string, config: VoiceConfig): TextChunk[] {
     if ((exceedsTime || exceedsChars) && currentChunk && meetsMinimum) {
       // Finalize current chunk
       const finalChunk = finalizeChunk(currentChunk, config);
+      // Process chunk boundary for seamless transitions
+      const processedChunk = processChunkBoundary(finalChunk, config, false);
       const finalCharCount = config.emphasis.use_ssml ? 
-        getSSMLContentLength(finalChunk) : 
-        finalChunk.replace(/<[^>]+>/g, '').length;
+        getSSMLContentLength(processedChunk) : 
+        processedChunk.replace(/<[^>]+>/g, '').length;
       
-      console.log(`📦 Chunk ${chunkId}: ${finalCharCount} chars, ~${estimateDuration(finalChunk, config)}s`);
+      console.log(`📦 Chunk ${chunkId}: ${finalCharCount} chars, ~${estimateDuration(processedChunk, config)}s`);
       
       chunks.push({
         id: chunkId++,
-        body: finalChunk,
-        estSeconds: estimateDuration(finalChunk, config),
+        body: processedChunk,
+        estSeconds: estimateDuration(processedChunk, config),
         charCount: finalCharCount,
       });
       
@@ -89,16 +91,18 @@ export function chunk(processedText: string, config: VoiceConfig): TextChunk[] {
   // Add the final chunk if there's remaining content
   if (currentChunk.trim()) {
     const finalChunk = finalizeChunk(currentChunk, config);
+    // Process final chunk boundary (isLastChunk = true, no boundary pause)
+    const processedChunk = processChunkBoundary(finalChunk, config, true);
     const finalCharCount = config.emphasis.use_ssml ? 
-      getSSMLContentLength(finalChunk) : 
-      finalChunk.replace(/<[^>]+>/g, '').length;
+      getSSMLContentLength(processedChunk) : 
+      processedChunk.replace(/<[^>]+>/g, '').length;
     
-    console.log(`📦 Final chunk ${chunkId}: ${finalCharCount} chars, ~${estimateDuration(finalChunk, config)}s`);
+    console.log(`📦 Final chunk ${chunkId}: ${finalCharCount} chars, ~${estimateDuration(processedChunk, config)}s`);
     
     chunks.push({
       id: chunkId,
-      body: finalChunk,
-      estSeconds: estimateDuration(finalChunk, config),
+      body: processedChunk,
+      estSeconds: estimateDuration(processedChunk, config),
       charCount: finalCharCount,
     });
   }
@@ -142,6 +146,41 @@ function segmentNaturally(text: string): string[] {
   }
   
   return naturalSegments.filter(segment => segment.trim().length > 0);
+}
+
+/**
+ * Processes chunk boundaries for seamless audio transitions
+ * Adds natural pauses and breath marks to prevent clipping
+ */
+function processChunkBoundary(chunkText: string, config: VoiceConfig, isLastChunk: boolean = false): string {
+  let processed = chunkText.trim();
+  
+  // Ensure chunk ends with complete sentence
+  if (config.chunking.guardrails?.force_sentence_completion) {
+    // If chunk doesn't end with sentence-ending punctuation, find the last complete sentence
+    if (!/[.!?]\s*(<[^>]*>)?\s*$/.test(processed)) {
+      const sentences = processed.split(/([.!?]\s*(?:<[^>]*>)?)/);
+      const completeSentences = [];
+      
+      for (let i = 0; i < sentences.length - 1; i += 2) {
+        if (sentences[i].trim() && sentences[i + 1]) {
+          completeSentences.push(sentences[i] + sentences[i + 1]);
+        }
+      }
+      
+      if (completeSentences.length > 0) {
+        processed = completeSentences.join('').trim();
+      }
+    }
+  }
+  
+  // Add boundary breath mark for natural transitions (except last chunk)
+  if (!isLastChunk && config.chunking.guardrails?.add_boundary_breath) {
+    const boundaryPause = `<break time="${config.pacing.pauses.boundary / 1000}s"/>`;
+    processed = processed + ' ' + boundaryPause;
+  }
+  
+  return processed;
 }
 
 /**
@@ -273,8 +312,8 @@ function finalizeChunk(chunk: string, config: VoiceConfig): string {
     }
   }
 
-  // Add short pause at end if configured
-  if (config.chunking.guardrails.end_with_short_pause) {
+  // Add natural pause at end if configured
+  if (config.chunking.guardrails.end_with_natural_pause) {
     const shortPause = `<pause:${config.pacing.pauses.beat}>`; // WST2: micro-beat for rhythmic control
     if (!finalized.endsWith('>')) {
       finalized = finalized + ' ' + shortPause;

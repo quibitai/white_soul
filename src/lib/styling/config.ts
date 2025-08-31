@@ -34,6 +34,7 @@ const VoiceConfigSchema = z.object({
       beat: z.number(),
       pause: z.number(),  // Renamed from 'minor' for clarity
       shift: z.number(),
+      boundary: z.number(), // NEW: chunk boundary masking pause
       // Removed: impact and major (too long for V2 best practices)
     }),
     reflective_rate_delta_pct: z.number(),
@@ -64,7 +65,9 @@ const VoiceConfigSchema = z.object({
     min_chars: z.number().optional(),
     guardrails: z.object({
       start_with_micro_pause: z.boolean(),
-      end_with_short_pause: z.boolean(),
+      end_with_natural_pause: z.boolean(), // Updated from end_with_short_pause
+      force_sentence_completion: z.boolean().optional(), // NEW: prevent mid-sentence splits
+      add_boundary_breath: z.boolean().optional(), // NEW: add breath marks at chunk ends
     }),
   }),
   punctuation: z.object({

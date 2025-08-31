@@ -2,24 +2,25 @@ voice:
   voice_id: "ELEVEN_VOICE_ID"
   model_id: "eleven_multilingual_v2"  # v2 for cloned voice compatibility
   settings:
-    stability: 0.42         # ↑ More natural variation while maintaining consistency
-    similarity_boost: 0.80  # Voice consistency for cloned voice (optimal)
-    style: 0.28            # ↑ Increased emotional range for better expression
+    stability: 0.65         # ↑ Higher stability for seamless chunk consistency
+    similarity_boost: 0.85  # ↑ Maximum voice consistency for chunk stitching
+    style: 0.22            # ↓ Reduced variation to prevent chunk-to-chunk differences
     speaker_boost: true     # Enhances clarity and presence
-    speed: 0.94            # ↑ More natural pace (closer to 1.0 per ElevenLabs best practices)
+    speed: 0.94            # Optimal natural pace
     quality: "enhanced"     # V2 optimization for professional output
   seed: 123456            # Deterministic generation for consistency
 
 pacing:
-  wpm: 142               # ↑ Compensate for speed increase while maintaining natural flow
+  wpm: 142               # Compensate for speed increase while maintaining natural flow
   pauses:
-    # Simplified break system - fewer categories, shorter durations for V2 optimization
-    micro: 300            # ↓ 0.3s - subtle hesitation (reduced from 400ms)
-    beat: 600             # ↓ 0.6s - natural rhythm (reduced from 700ms) 
-    pause: 1000           # ↓ 1.0s - comfortable break (was minor: 1200ms)
-    shift: 1600           # ↓ 1.6s - topic transition (reduced from 1800ms)
-    # Removed: impact (2300ms) and major (3500ms) - too long per ElevenLabs best practices
-  reflective_rate_delta_pct: -2  # ↑ Less dramatic pacing adjustment for more natural flow
+    # Optimized break system for seamless chunk transitions
+    micro: 300            # 0.3s - subtle hesitation
+    beat: 600             # 0.6s - natural rhythm
+    pause: 1000           # 1.0s - comfortable break
+    shift: 1600           # 1.6s - topic transition
+    boundary: 1200        # ↑ 1.2s - NEW: chunk boundary masking pause
+    # Removed: impact and major - too long per ElevenLabs best practices
+  reflective_rate_delta_pct: -2  # Less dramatic pacing adjustment for natural flow
 
 tone:
   allow: ["kinda","literally","ugh","you know","I mean","so yeah","still","weird"]
@@ -45,12 +46,14 @@ group_address:
 
 
 chunking:
-  target_seconds: 22          # ↓ Optimized for V2 processing efficiency
-  max_chars: 2000             # ↓ More manageable chunks for better V2 handling
-  min_chars: 1000             # ↑ Substantial content per chunk for consistency
+  target_seconds: 35          # ↑ Longer chunks = fewer boundaries = less clipping
+  max_chars: 3200             # ↑ Substantial chunks for seamless audio flow
+  min_chars: 1500             # ↑ Ensure meaningful content per chunk
   guardrails:
     start_with_micro_pause: true   # Natural chunk transitions
-    end_with_short_pause: true     # Breathing room between chunks
+    end_with_natural_pause: true   # ↑ Longer pauses to mask chunk boundaries
+    force_sentence_completion: true # ↑ Never split mid-sentence
+    add_boundary_breath: true      # ↑ Add breath marks at chunk ends
 
 punctuation:
   # WST2 Studio Speech Rules - Punctuation + Space Logic
