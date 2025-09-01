@@ -12,7 +12,7 @@ export interface SynthesisOptions {
   voiceId: string;
   modelId: string;
   voiceSettings: TuningSettings['eleven'];
-  format: 'wav' | 'mp3';
+  format: 'wav' | 'mp3' | 'pcm';
   seed?: number;
   previousText?: string;
   nextText?: string;
@@ -46,8 +46,8 @@ export async function synthesizeElevenLabs(
     nextText,
   } = options;
 
-  // Use WAV format for processing (44.1kHz mono)
-  const outputFormat = format === 'wav' ? 'wav' : 'mp3_44100_128';
+  // Use PCM format for processing (44.1kHz) - ElevenLabs doesn't support 'wav'
+  const outputFormat = format === 'wav' || format === 'pcm' ? 'pcm_44100' : 'mp3_44100_128';
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${outputFormat}`;
 
   const requestBody: Record<string, unknown> = {
@@ -79,9 +79,11 @@ export async function synthesizeElevenLabs(
     model: modelId,
     textLength: ssmlContent.length,
     hasSSML: /<[^>]+>/.test(ssmlContent),
+    hasBreaks: /<break\s+time="[^"]+"\s*\/?>/.test(ssmlContent),
     hasContext: !!(previousText || nextText),
     stability: voiceSettings.stability,
     style: voiceSettings.style,
+    ssmlPreview: ssmlContent.slice(0, 200) + (ssmlContent.length > 200 ? '...' : ''),
   });
 
   try {

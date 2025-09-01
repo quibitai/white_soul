@@ -17,10 +17,12 @@ import {
 } from '@/lib/types/tuning';
 import { annotateTextToSSML } from '@/lib/styling/annotate';
 import { makeChunks } from '@/lib/styling/segment';
+import { processRender } from '@/lib/workers/processRender';
 import { 
   generateScriptHash, 
   generateSettingsHash, 
-  generateRenderPath 
+  generateRenderPath,
+  generateBlobUrl
 } from '@/lib/utils/hash';
 
 /**
@@ -77,7 +79,7 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
     
     // Step 1: Annotate text to SSML with diagnostics
     console.log('🎙️ Annotating text to SSML...');
-    const annotationResult = annotateTextToSSML(rawScript, settings);
+    const annotationResult = await annotateTextToSSML(rawScript, settings);
     
     // Step 2: Create semantic chunks with overlap and context
     console.log('✂️ Creating semantic chunks...');
@@ -103,7 +105,7 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
     await put(
       generateRenderPath(renderId, 'request.json'),
       JSON.stringify(request, null, 2),
-      { access: 'public' }
+      { access: 'public', allowOverwrite: true }
     );
     
     // Step 4: Save SSML output
@@ -113,6 +115,7 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
       { 
         access: 'public',
         contentType: 'application/xml',
+        allowOverwrite: true,
       }
     );
     
@@ -134,11 +137,26 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
       })),
     };
     
-    await put(
-      generateRenderPath(renderId, 'manifest.json'),
+    const manifestPath = generateRenderPath(renderId, 'manifest.json');
+    const manifestBlob = await put(
+      manifestPath,
       JSON.stringify(manifest, null, 2),
-      { access: 'public' }
+      { access: 'public', allowOverwrite: true }
     );
+    // Store actual blob URLs in a metadata file for reliable access
+    const blobMetadata = {
+      manifest: manifestBlob.url,
+    };
+    
+    await put(
+      generateRenderPath(renderId, 'blob-urls.json'),
+      JSON.stringify(blobMetadata, null, 2),
+      { access: 'public', allowOverwrite: true }
+    );
+    
+    console.log('📦 Manifest blob created:');
+    console.log('  - Vercel URL:', manifestBlob.url);
+    console.log('  - Our URL:   ', generateBlobUrl(manifestPath));
     
     // Step 6: Create initial status.json
     const initialStatus: RenderStatus = {
@@ -160,7 +178,7 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
     await put(
       generateRenderPath(renderId, 'status.json'),
       JSON.stringify(initialStatus, null, 2),
-      { access: 'public' }
+      { access: 'public', allowOverwrite: true }
     );
     
     // Calculate statistics
@@ -172,6 +190,17 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
     const ssmlTagCount = (annotationResult.ssml.match(/<[^>]+>/g) || []).length;
     
     console.log(`✅ Render ${renderId} initialized successfully`);
+    
+    // Start processing immediately with the manifest and settings we just created
+    // This avoids the blob read issues by passing data directly
+    console.log('🚀 Starting processing with direct data...');
+    try {
+      await processRender(renderId, manifest, settings);
+      console.log(`✅ Render ${renderId} processing completed`);
+    } catch (processError) {
+      console.error(`❌ Processing failed for render ${renderId}:`, processError);
+      // Don't throw here - let the UI handle the error via status polling
+    }
     
     return {
       renderId,
@@ -209,7 +238,7 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
       await put(
         generateRenderPath(renderId, 'status.json'),
         JSON.stringify(errorStatus, null, 2),
-        { access: 'public' }
+        { access: 'public', allowOverwrite: true }
       );
     } catch (statusError) {
       console.error('Failed to save error status:', statusError);
@@ -288,7 +317,7 @@ export async function updateRenderStatus(
     await put(
       generateRenderPath(renderId, 'status.json'),
       JSON.stringify(updatedStatus, null, 2),
-      { access: 'public' }
+      { access: 'public', allowOverwrite: true }
     );
     
   } catch (error) {

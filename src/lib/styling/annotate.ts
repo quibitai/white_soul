@@ -8,6 +8,7 @@ import { normalize } from './normalizer';
 import { applyMacros } from './macros';
 import { toSSML } from './ssml';
 import { applyConversationalRealism } from './conversational';
+import { loadConfig } from './config';
 
 /**
  * Diagnostic information about SSML processing
@@ -65,54 +66,24 @@ export interface AnnotationResult {
  * @param settings - Tuning settings for processing
  * @returns Annotated SSML with diagnostics
  */
-export function annotateTextToSSML(
+export async function annotateTextToSSML(
   rawText: string,
   settings: TuningSettings
-): AnnotationResult {
+): Promise<AnnotationResult> {
+  // Load the proper voice configuration
+  const config = await loadConfig();
+
   // Step 1: Normalize text
-  const normalized = normalize(rawText);
+  const normalized = normalize(rawText, config);
   
   // Step 2: Apply conversational realism
-  const conversational = applyConversationalRealism(normalized, {
-    // Convert TuningSettings to legacy VoiceConfig format
-    pacing: {
-      wpm: 145, // Derived from settings
-      pauses: {
-        micro: settings.ssml.breakMs.comma,
-        short: settings.ssml.breakMs.clause,
-        med: settings.ssml.breakMs.sentence,
-        long: settings.ssml.breakMs.paragraph,
-        break: 2000,
-      },
-    },
-    emphasis: {
-      use_ssml: true,
-    },
-  } as Record<string, unknown>);
+  const conversational = applyConversationalRealism(normalized, config);
   
   // Step 3: Apply macros for pauses and emphasis
-  const withMacros = applyMacros(conversational, {
-    pacing: {
-      wpm: 145,
-      pauses: {
-        micro: settings.ssml.breakMs.comma,
-        short: settings.ssml.breakMs.clause,
-        med: settings.ssml.breakMs.sentence,
-        long: settings.ssml.breakMs.paragraph,
-        break: 2000,
-      },
-    },
-    emphasis: {
-      use_ssml: true,
-    },
-  } as Record<string, unknown>);
+  const withMacros = applyMacros(conversational, config);
   
   // Step 4: Convert to SSML
-  const finalSSML = toSSML(withMacros, {
-    emphasis: {
-      use_ssml: true,
-    },
-  } as Record<string, unknown>);
+  const finalSSML = toSSML(withMacros, config);
   
   // Step 5: Generate diagnostics
   const diagnostics = generateSSMLDiagnostics(finalSSML, settings);

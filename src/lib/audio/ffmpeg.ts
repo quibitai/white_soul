@@ -10,9 +10,95 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { TuningSettings } from '@/lib/types/tuning';
 
-// Set FFmpeg path
+/**
+ * Convert raw PCM data to WAV format with proper headers
+ * @param pcmBuffer - Raw PCM audio data
+ * @param sampleRate - Sample rate (default: 44100)
+ * @param channels - Number of channels (default: 1 for mono)
+ * @param bitsPerSample - Bits per sample (default: 16)
+ * @returns WAV formatted buffer
+ */
+function pcmToWav(
+  pcmBuffer: Buffer,
+  sampleRate: number = 44100,
+  channels: number = 1,
+  bitsPerSample: number = 16
+): Buffer {
+  const byteRate = sampleRate * channels * bitsPerSample / 8;
+  const blockAlign = channels * bitsPerSample / 8;
+  const dataSize = pcmBuffer.length;
+  const fileSize = 36 + dataSize;
+
+  const header = Buffer.alloc(44);
+  let offset = 0;
+
+  // RIFF header
+  header.write('RIFF', offset); offset += 4;
+  header.writeUInt32LE(fileSize, offset); offset += 4;
+  header.write('WAVE', offset); offset += 4;
+
+  // fmt chunk
+  header.write('fmt ', offset); offset += 4;
+  header.writeUInt32LE(16, offset); offset += 4; // chunk size
+  header.writeUInt16LE(1, offset); offset += 2; // audio format (PCM)
+  header.writeUInt16LE(channels, offset); offset += 2;
+  header.writeUInt32LE(sampleRate, offset); offset += 4;
+  header.writeUInt32LE(byteRate, offset); offset += 4;
+  header.writeUInt16LE(blockAlign, offset); offset += 2;
+  header.writeUInt16LE(bitsPerSample, offset); offset += 2;
+
+  // data chunk
+  header.write('data', offset); offset += 4;
+  header.writeUInt32LE(dataSize, offset);
+
+  return Buffer.concat([header, pcmBuffer]);
+}
+
+// Initialize FFmpeg path
+async function initFFmpeg() {
+  try {
+    if (ffmpegPath) {
+      console.log('Setting FFmpeg path to:', ffmpegPath);
+      ffmpeg.setFfmpegPath(ffmpegPath);
+      
+      // Verify the path exists
+      try {
+        await fs.access(ffmpegPath);
+        console.log('FFmpeg binary verified at:', ffmpegPath);
+      } catch (accessError) {
+        console.warn('FFmpeg binary not accessible at:', ffmpegPath);
+        // Try alternative paths
+        const alternativePaths = [
+          '/usr/bin/ffmpeg',
+          '/usr/local/bin/ffmpeg',
+          process.cwd() + '/node_modules/ffmpeg-static/ffmpeg'
+        ];
+        
+        for (const altPath of alternativePaths) {
+          try {
+            await fs.access(altPath);
+            console.log('Using alternative FFmpeg path:', altPath);
+            ffmpeg.setFfmpegPath(altPath);
+            break;
+          } catch (e) {
+            // Continue to next path
+          }
+        }
+      }
+    } else {
+      console.warn('FFmpeg path not found, using system FFmpeg');
+    }
+  } catch (error) {
+    console.error('Failed to set FFmpeg path:', error);
+  }
+}
+
+// Set FFmpeg path with better error handling and fallbacks
 if (ffmpegPath) {
+  console.log('Setting FFmpeg path to:', ffmpegPath);
   ffmpeg.setFfmpegPath(ffmpegPath);
+} else {
+  console.warn('FFmpeg path not found, using system FFmpeg');
 }
 
 /**
@@ -29,6 +115,9 @@ export async function acrossfadeJoin(
   sampleRate: number = 44100,
   mono: boolean = true
 ): Promise<Buffer> {
+  // Initialize FFmpeg path if needed
+  await initFFmpeg();
+  
   if (audioBuffers.length === 0) {
     throw new Error('No audio buffers provided');
   }
@@ -42,10 +131,12 @@ export async function acrossfadeJoin(
   const tempFiles: string[] = [];
   
   try {
-    // Write buffers to temporary files
+    // Write buffers to temporary files (convert PCM to WAV format)
     for (let i = 0; i < audioBuffers.length; i++) {
       const tempFile = join(tempDir, `chunk_${i}_${Date.now()}.wav`);
-      await fs.writeFile(tempFile, audioBuffers[i]);
+      // Convert raw PCM data to proper WAV format with headers
+      const wavBuffer = pcmToWav(audioBuffers[i], sampleRate, mono ? 1 : 2);
+      await fs.writeFile(tempFile, wavBuffer);
       tempFiles.push(tempFile);
     }
     
@@ -54,6 +145,8 @@ export async function acrossfadeJoin(
     
     // Build FFmpeg filter complex for crossfading
     const filterComplex = buildCrossfadeFilter(audioBuffers.length, crossfadeMs / 1000);
+    console.log(`🔧 FFmpeg filter: ${filterComplex}`);
+    console.log(`🔧 Input files: ${tempFiles.length}`);
     
     return new Promise((resolve, reject) => {
       let command = ffmpeg();
@@ -66,6 +159,7 @@ export async function acrossfadeJoin(
       // Apply crossfade filter and output settings
       command
         .complexFilter(filterComplex)
+        .map('[out]')
         .audioChannels(mono ? 1 : 2)
         .audioFrequency(sampleRate)
         .audioCodec('pcm_s16le')
@@ -74,24 +168,48 @@ export async function acrossfadeJoin(
         .on('end', async () => {
           try {
             const result = await fs.readFile(outputFile);
+            
+            // Cleanup temporary files after successful processing
+            for (const file of [...tempFiles, outputFile]) {
+              try {
+                await fs.unlink(file);
+              } catch (error) {
+                console.warn(`Failed to cleanup temp file ${file}:`, error);
+              }
+            }
+            
             resolve(result);
           } catch (error) {
             reject(error);
           }
         })
-        .on('error', reject)
+        .on('error', async (error) => {
+          console.error('FFmpeg crossfade error:', error);
+          
+          // Cleanup temporary files on error
+          for (const file of [...tempFiles, outputFile]) {
+            try {
+              await fs.unlink(file);
+            } catch (cleanupError) {
+              console.warn(`Failed to cleanup temp file ${file}:`, cleanupError);
+            }
+          }
+          
+          reject(error);
+        })
         .run();
     });
     
-  } finally {
-    // Cleanup temporary files
+  } catch (error) {
+    // Cleanup on synchronous errors
     for (const file of tempFiles) {
       try {
         await fs.unlink(file);
-      } catch (error) {
-        console.warn(`Failed to cleanup temp file ${file}:`, error);
+      } catch (cleanupError) {
+        console.warn(`Failed to cleanup temp file ${file}:`, cleanupError);
       }
     }
+    throw error;
   }
 }
 
@@ -140,8 +258,9 @@ export async function resampleAudio(
   const outputFile = join(tempDir, `output_${Date.now()}.wav`);
   
   try {
-    // Write input buffer to file
-    await fs.writeFile(inputFile, audioBuffer);
+    // Write input buffer to file (convert PCM to WAV format)
+    const wavBuffer = pcmToWav(audioBuffer, 44100, 1); // Assume input is mono PCM at 44.1kHz
+    await fs.writeFile(inputFile, wavBuffer);
     
     return new Promise((resolve, reject) => {
       ffmpeg(inputFile)
@@ -153,23 +272,42 @@ export async function resampleAudio(
         .on('end', async () => {
           try {
             const result = await fs.readFile(outputFile);
+            
+            // Cleanup temporary files after successful processing
+            try {
+              await fs.unlink(inputFile);
+              await fs.unlink(outputFile);
+            } catch (error) {
+              console.warn('Failed to cleanup temp files:', error);
+            }
+            
             resolve(result);
           } catch (error) {
             reject(error);
           }
         })
-        .on('error', reject)
+        .on('error', async (error) => {
+          // Cleanup temporary files on error
+          try {
+            await fs.unlink(inputFile);
+            await fs.unlink(outputFile);
+          } catch (cleanupError) {
+            console.warn('Failed to cleanup temp files:', cleanupError);
+          }
+          reject(error);
+        })
         .run();
     });
     
-  } finally {
-    // Cleanup
+  } catch (error) {
+    // Cleanup on synchronous errors
     try {
       await fs.unlink(inputFile);
       await fs.unlink(outputFile);
-    } catch (error) {
-      console.warn('Failed to cleanup temp files:', error);
+    } catch (cleanupError) {
+      console.warn('Failed to cleanup temp files:', cleanupError);
     }
+    throw error;
   }
 }
 
@@ -193,7 +331,8 @@ export async function masterAndEncode(
   const outputFile = join(tempDir, `mastered_${Date.now()}.${settings.format}`);
   
   try {
-    // Write input buffer to file
+    // Write input buffer to file (convert to WAV format if needed)
+    // The input should already be a WAV buffer from stitching, but ensure proper format
     await fs.writeFile(inputFile, audioBuffer);
     
     // Build audio filter chain
@@ -227,23 +366,42 @@ export async function masterAndEncode(
         .on('end', async () => {
           try {
             const result = await fs.readFile(outputFile);
+            
+            // Cleanup temporary files after successful processing
+            try {
+              await fs.unlink(inputFile);
+              await fs.unlink(outputFile);
+            } catch (error) {
+              console.warn('Failed to cleanup temp files:', error);
+            }
+            
             resolve(result);
           } catch (error) {
             reject(error);
           }
         })
-        .on('error', reject)
+        .on('error', async (error) => {
+          // Cleanup temporary files on error
+          try {
+            await fs.unlink(inputFile);
+            await fs.unlink(outputFile);
+          } catch (cleanupError) {
+            console.warn('Failed to cleanup temp files:', cleanupError);
+          }
+          reject(error);
+        })
         .run();
     });
     
-  } finally {
-    // Cleanup
+  } catch (error) {
+    // Cleanup on synchronous errors
     try {
       await fs.unlink(inputFile);
       await fs.unlink(outputFile);
-    } catch (error) {
-      console.warn('Failed to cleanup temp files:', error);
+    } catch (cleanupError) {
+      console.warn('Failed to cleanup temp files:', cleanupError);
     }
+    throw error;
   }
 }
 
@@ -327,23 +485,42 @@ export async function encodeAudio(
         .on('end', async () => {
           try {
             const result = await fs.readFile(outputFile);
+            
+            // Cleanup temporary files after successful processing
+            try {
+              await fs.unlink(inputFile);
+              await fs.unlink(outputFile);
+            } catch (error) {
+              console.warn('Failed to cleanup temp files:', error);
+            }
+            
             resolve(result);
           } catch (error) {
             reject(error);
           }
         })
-        .on('error', reject)
+        .on('error', async (error) => {
+          // Cleanup temporary files on error
+          try {
+            await fs.unlink(inputFile);
+            await fs.unlink(outputFile);
+          } catch (cleanupError) {
+            console.warn('Failed to cleanup temp files:', cleanupError);
+          }
+          reject(error);
+        })
         .run();
     });
     
-  } finally {
-    // Cleanup
+  } catch (error) {
+    // Cleanup on synchronous errors
     try {
       await fs.unlink(inputFile);
       await fs.unlink(outputFile);
-    } catch (error) {
-      console.warn('Failed to cleanup temp files:', error);
+    } catch (cleanupError) {
+      console.warn('Failed to cleanup temp files:', cleanupError);
     }
+    throw error;
   }
 }
 
@@ -372,9 +549,17 @@ export async function analyzeAudio(audioBuffer: Buffer): Promise<{
         ])
         .format('null')
         .output('-')
-        .on('end', () => {
+        .on('end', async () => {
           // TODO: Parse FFmpeg output for actual measurements
           // For now, return placeholder values
+          
+          // Cleanup temporary file after successful processing
+          try {
+            await fs.unlink(inputFile);
+          } catch (error) {
+            console.warn('Failed to cleanup analysis temp file:', error);
+          }
+          
           resolve({
             durationSec: audioBuffer.length / (44100 * 2 * 2), // Rough estimate
             lufsIntegrated: -14.0, // Placeholder
@@ -382,15 +567,25 @@ export async function analyzeAudio(audioBuffer: Buffer): Promise<{
             joinEnergySpikes: [], // TODO: Implement spike detection
           });
         })
-        .on('error', reject)
+        .on('error', async (error) => {
+          // Cleanup temporary file on error
+          try {
+            await fs.unlink(inputFile);
+          } catch (cleanupError) {
+            console.warn('Failed to cleanup analysis temp file:', cleanupError);
+          }
+          reject(error);
+        })
         .run();
     });
     
-  } finally {
+  } catch (error) {
+    // Cleanup on synchronous errors
     try {
       await fs.unlink(inputFile);
-    } catch (error) {
-      console.warn('Failed to cleanup analysis temp file:', error);
+    } catch (cleanupError) {
+      console.warn('Failed to cleanup analysis temp file:', cleanupError);
     }
+    throw error;
   }
 }

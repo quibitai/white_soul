@@ -26,6 +26,7 @@ import {
   type Diagnostics,
 } from '@/lib/types/tuning';
 import { startRender, type StartRenderResult } from '@/app/actions/startRender';
+import { generateRenderPath, generateBlobUrl } from '@/lib/utils/hash';
 
 interface RenderJob {
   renderId: string;
@@ -33,32 +34,55 @@ interface RenderJob {
   result?: StartRenderResult;
   finalUrl?: string;
   diagnostics?: Diagnostics;
+  ssmlContent?: string;
 }
 
 export default function V2Page() {
   const [script, setScript] = useState('');
   const [settings, setSettings] = useState<TuningSettings>(DEFAULT_TUNING_SETTINGS);
-  const [showTuning, setShowTuning] = useState(false);
+  const [showTuning, setShowTuning] = useState(true);
   const [currentJob, setCurrentJob] = useState<RenderJob | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editedSSML, setEditedSSML] = useState<string | null>(null);
 
   // Poll for status updates
   useEffect(() => {
     if (!currentJob || currentJob.status.state === 'done' || currentJob.status.state === 'failed') {
+      console.log('🛑 Stopping polling - job state:', currentJob?.status.state);
       return;
     }
+    
+    console.log('🔄 Starting polling for job:', currentJob.renderId, 'state:', currentJob.status.state);
 
     const pollInterval = setInterval(async () => {
       try {
         const response = await fetch(`/api/status/${currentJob.renderId}`);
         if (response.ok) {
-          const status: RenderStatus = await response.json();
-          setCurrentJob(prev => prev ? { ...prev, status } : null);
+          const data = await response.json();
+          console.log('📊 Status update received:', data.state, 'finalUrl:', !!data.finalUrl);
+          
+          // Update job with status, finalUrl, diagnostics, and ssmlContent
+          setCurrentJob(prev => prev ? { 
+            ...prev, 
+            status: data,
+            finalUrl: data.finalUrl,
+            diagnostics: data.diagnostics,
+            ssmlContent: data.ssmlContent
+          } : null);
 
-          // If completed, fetch final result
-          if (status.state === 'done') {
-            // TODO: Fetch final URL and diagnostics
+          // If completed or failed, stop polling
+          if (data.state === 'done') {
+            console.log('🏁 Job completed, stopping polling:', data.state);
+            clearInterval(pollInterval);
+          } else if (data.state === 'failed') {
+            console.log('❌ Job failed, stopping polling:', data.state);
+            clearInterval(pollInterval);
+          }
+        } else {
+          console.warn('❌ Status API error:', response.status, response.statusText);
+          if (response.status === 404) {
+            console.log('🔍 Status not found, job may have completed - stopping polling');
             clearInterval(pollInterval);
           }
         }
@@ -76,9 +100,10 @@ export default function V2Page() {
       return;
     }
 
-    setIsProcessing(true);
+          setIsProcessing(true);
     setError(null);
     setCurrentJob(null);
+    setEditedSSML(null); // Reset edited SSML
 
     try {
       console.log('🚀 Starting render with dev_plan_02 architecture');
@@ -111,21 +136,61 @@ export default function V2Page() {
 
       setCurrentJob(initialJob);
 
-      // Start processing
-      const processResponse = await fetch('/api/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ renderId: result.renderId }),
-      });
-
-      if (!processResponse.ok) {
-        throw new Error('Failed to start processing');
-      }
-
-      console.log('🔄 Processing started');
+      // Processing starts automatically in startRender action
+      console.log('🔄 Processing started automatically');
 
     } catch (error) {
       console.error('❌ Render failed:', error);
+      setError(error instanceof Error ? error.message : 'Unknown error');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleRegenerateFromSSML = async () => {
+    if (!editedSSML || !currentJob) {
+      return;
+    }
+
+    setIsProcessing(true);
+    setError(null);
+
+    try {
+      console.log('🔄 Regenerating from edited SSML...');
+      
+      // Create a new render with the edited SSML as the raw script
+      // The SSML will be re-processed through the annotation pipeline
+      const result = await startRender({
+        rawScript: editedSSML,
+        settings,
+      });
+      console.log('✅ Regeneration started:', result);
+
+      // Create new job state
+      const newJob: RenderJob = {
+        renderId: result.renderId,
+        status: {
+          state: 'queued',
+          progress: { total: result.stats.chunks, done: 0 },
+          steps: [
+            { name: 'ssml', ok: true },
+            { name: 'chunk', ok: true },
+            { name: 'synthesize', ok: false, done: 0, total: result.stats.chunks },
+          ],
+          startedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          error: null,
+        },
+        result,
+      };
+
+      setCurrentJob(newJob);
+      setEditedSSML(null); // Reset after regeneration
+
+      console.log('🔄 Regeneration processing started automatically');
+
+    } catch (error) {
+      console.error('❌ Regeneration failed:', error);
       setError(error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsProcessing(false);
@@ -149,7 +214,7 @@ export default function V2Page() {
 
   const getStatusColor = (state: RenderStatus['state']) => {
     switch (state) {
-      case 'queued': return 'text-blue-600';
+      case 'queued': return 'text-blue-800 font-semibold';
       case 'running': return 'text-yellow-600';
       case 'done': return 'text-green-600';
       case 'failed': return 'text-red-600';
@@ -175,21 +240,21 @@ export default function V2Page() {
           <h1 className="text-5xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-4">
             White Soul Tarot v2.0
           </h1>
-          <p className="text-xl text-gray-600 mb-2">
+          <p className="text-xl text-gray-800 mb-2 font-medium">
             Advanced TTS Pipeline with Content-Addressable Caching
           </p>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-gray-700">
             Blob-only architecture • Semantic chunking • Professional mastering
           </p>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="xl:col-span-3 space-y-6">
             {/* Script Input */}
             <div className="bg-white rounded-xl shadow-lg p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-2xl font-bold text-gray-800">Script Input</h2>
+                <h2 className="text-2xl font-bold text-gray-900">Script Input</h2>
                 <button
                   onClick={() => setShowTuning(!showTuning)}
                   className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
@@ -207,12 +272,12 @@ export default function V2Page() {
                 value={script}
                 onChange={(e) => setScript(e.target.value)}
                 placeholder="Enter your tarot reading script here..."
-                className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+                className="w-full h-64 p-4 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 placeholder-gray-600"
                 disabled={isProcessing}
               />
 
               <div className="flex justify-between items-center mt-4">
-                <span className="text-sm text-gray-500">
+                <span className="text-sm text-gray-800 font-medium">
                   {script.length} / 50,000 characters
                 </span>
                 <button
@@ -234,6 +299,37 @@ export default function V2Page() {
                 </button>
               </div>
             </div>
+
+                      {/* SSML Preview */}
+          {currentJob?.ssmlContent && (
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-800">Annotated Script (SSML)</h3>
+                <button
+                  onClick={handleRegenerateFromSSML}
+                  disabled={isProcessing || !editedSSML || editedSSML === currentJob.ssmlContent}
+                  className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                >
+                  <Zap size={16} />
+                  <span>Regenerate Audio</span>
+                </button>
+              </div>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <textarea
+                  value={editedSSML || currentJob.ssmlContent}
+                  onChange={(e) => setEditedSSML(e.target.value)}
+                  className="w-full h-64 text-sm text-gray-700 font-mono bg-transparent border-none resize-none focus:outline-none"
+                  placeholder="Edit SSML content here..."
+                />
+              </div>
+              {editedSSML && editedSSML !== currentJob.ssmlContent && (
+                <div className="mt-2 text-sm text-orange-600 flex items-center space-x-1">
+                  <AlertCircle size={14} />
+                  <span>SSML has been modified. Click "Regenerate Audio" to apply changes.</span>
+                </div>
+              )}
+            </div>
+          )}
 
             {/* Error Display */}
             {error && (
@@ -259,7 +355,7 @@ export default function V2Page() {
 
                 {/* Progress Bar */}
                 <div className="mb-4">
-                  <div className="flex justify-between text-sm text-gray-600 mb-2">
+                  <div className="flex justify-between text-sm text-gray-900 font-medium mb-2">
                     <span>Overall Progress</span>
                     <span>{Math.round(getProgressPercentage())}%</span>
                   </div>
@@ -281,10 +377,10 @@ export default function V2Page() {
                         ) : (
                           <Clock size={16} className="text-gray-400" />
                         )}
-                        <span className="font-medium capitalize">{step.name}</span>
+                        <span className="font-semibold text-gray-900 capitalize">{step.name}</span>
                       </div>
                       {step.total && (
-                        <span className="text-sm text-gray-600">
+                        <span className="text-sm text-gray-900 font-medium">
                           {step.done || 0} / {step.total}
                         </span>
                       )}
@@ -295,19 +391,19 @@ export default function V2Page() {
                 {/* Render Info */}
                 {currentJob.result && (
                   <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                    <h4 className="font-medium text-blue-800 mb-2">Render Information</h4>
+                    <h4 className="font-semibold text-gray-900 mb-2">Render Information</h4>
                     <div className="grid grid-cols-3 gap-4 text-sm">
                       <div>
-                        <span className="text-blue-600">Chunks:</span>
-                        <span className="ml-2 font-medium">{currentJob.result.stats.chunks}</span>
+                        <span className="text-gray-900 font-medium">Chunks:</span>
+                        <span className="ml-2 font-semibold text-gray-900">{currentJob.result.stats.chunks}</span>
                       </div>
                       <div>
-                        <span className="text-blue-600">Duration:</span>
-                        <span className="ml-2 font-medium">{currentJob.result.stats.estimatedDuration}s</span>
+                        <span className="text-gray-900 font-medium">Duration:</span>
+                        <span className="ml-2 font-semibold text-gray-900">{currentJob.result.stats.estimatedDuration}s</span>
                       </div>
                       <div>
-                        <span className="text-blue-600">SSML Tags:</span>
-                        <span className="ml-2 font-medium">{currentJob.result.stats.ssmlTags}</span>
+                        <span className="text-gray-900 font-medium">SSML Tags:</span>
+                        <span className="ml-2 font-semibold text-gray-900">{currentJob.result.stats.ssmlTags}</span>
                       </div>
                     </div>
                   </div>
@@ -355,20 +451,20 @@ export default function V2Page() {
                     </h4>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       <div>
-                        <span className="text-gray-600">WPM:</span>
-                        <span className="ml-2 font-medium">{currentJob.diagnostics.wpm}</span>
+                        <span className="text-gray-900 font-medium">WPM:</span>
+                        <span className="ml-2 font-semibold text-gray-900">{currentJob.diagnostics.wpm}</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">Duration:</span>
-                        <span className="ml-2 font-medium">{currentJob.diagnostics.durationSec}s</span>
+                        <span className="text-gray-900 font-medium">Duration:</span>
+                        <span className="ml-2 font-semibold text-gray-900">{Number(currentJob.diagnostics.durationSec).toFixed(2)}s</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">LUFS:</span>
-                        <span className="ml-2 font-medium">{currentJob.diagnostics.lufsIntegrated}</span>
+                        <span className="text-gray-900 font-medium">LUFS:</span>
+                        <span className="ml-2 font-semibold text-gray-900">{Number(currentJob.diagnostics.lufsIntegrated).toFixed(1)}</span>
                       </div>
                       <div>
-                        <span className="text-gray-600">True Peak:</span>
-                        <span className="ml-2 font-medium">{currentJob.diagnostics.truePeakDb} dB</span>
+                        <span className="text-gray-900 font-medium">True Peak:</span>
+                        <span className="ml-2 font-semibold text-gray-900">{Number(currentJob.diagnostics.truePeakDb).toFixed(1)} dB</span>
                       </div>
                     </div>
                   </div>
@@ -378,7 +474,7 @@ export default function V2Page() {
           </div>
 
           {/* Tuning Panel */}
-          <div className="lg:col-span-1">
+          <div className="xl:col-span-2">
             {showTuning && (
               <TuningPanel
                 settings={settings}

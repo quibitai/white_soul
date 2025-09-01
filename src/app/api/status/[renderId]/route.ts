@@ -12,10 +12,10 @@ import { generateRenderPath, generateBlobUrl } from '@/lib/utils/hash';
  */
 export async function GET(
   req: NextRequest,
-  { params }: { params: { renderId: string } }
+  { params }: { params: Promise<{ renderId: string }> }
 ): Promise<NextResponse> {
   try {
-    const { renderId } = params;
+    const { renderId } = await params;
 
     if (!renderId) {
       return NextResponse.json(
@@ -25,24 +25,23 @@ export async function GET(
     }
 
     // Get status from blob storage
-    const statusPath = generateRenderPath(renderId, 'status.json');
+    const statusUrl = generateBlobUrl(generateRenderPath(renderId, 'status.json'));
     
     try {
-      const statusUrl = generateBlobUrl(statusPath);
       const response = await fetch(statusUrl);
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
       const status = await response.json();
 
-      // If render is complete, also try to get diagnostics
+      // If render is complete, also try to get diagnostics, finalUrl, and SSML
       let diagnostics = null;
       let finalUrl = null;
+      let ssmlContent = null;
 
       if (status.state === 'done') {
         try {
-          const diagnosticsPath = generateRenderPath(renderId, 'diagnostics.json');
-          const diagnosticsUrl = generateBlobUrl(diagnosticsPath);
+          const diagnosticsUrl = generateBlobUrl(generateRenderPath(renderId, 'diagnostics.json'));
           const diagnosticsResponse = await fetch(diagnosticsUrl);
           if (diagnosticsResponse.ok) {
             diagnostics = await diagnosticsResponse.json();
@@ -53,19 +52,28 @@ export async function GET(
 
         // Try to get final audio URL
         try {
-          const requestPath = generateRenderPath(renderId, 'request.json');
-          const requestUrl = generateBlobUrl(requestPath);
+          const requestUrl = generateBlobUrl(generateRenderPath(renderId, 'request.json'));
           const requestResponse = await fetch(requestUrl);
           if (requestResponse.ok) {
             const request = await requestResponse.json();
             const format = request.settings?.export?.format || 'mp3';
             
-            const finalPath = generateRenderPath(renderId, `final.${format}`);
-            // For now, construct the URL - in production this would be the actual blob URL
-            finalUrl = `${process.env.NEXT_PUBLIC_APP_URL || ''}/api/download/${renderId}`;
+            // Return direct blob URL for the final audio file
+            finalUrl = generateBlobUrl(generateRenderPath(renderId, `final.${format}`));
           }
         } catch (error) {
           console.warn('Could not determine final URL:', error);
+        }
+
+        // Try to get SSML content
+        try {
+          const ssmlUrl = generateBlobUrl(generateRenderPath(renderId, 'ssml.xml'));
+          const ssmlResponse = await fetch(ssmlUrl);
+          if (ssmlResponse.ok) {
+            ssmlContent = await ssmlResponse.text();
+          }
+        } catch (error) {
+          console.warn('Could not load SSML content:', error);
         }
       }
 
@@ -73,6 +81,7 @@ export async function GET(
         ...status,
         diagnostics,
         finalUrl,
+        ssmlContent,
       });
 
     } catch (error) {

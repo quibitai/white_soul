@@ -34,7 +34,7 @@ export const TuningSettingsSchema = z.object({
   }),
   stitching: z.object({
     crossfadeMs: z.number().min(0).max(500),
-    sampleRate: z.enum([44100, 22050]),
+    sampleRate: z.union([z.literal(44100), z.literal(22050)]),
     mono: z.boolean(),
   }),
   mastering: z.object({

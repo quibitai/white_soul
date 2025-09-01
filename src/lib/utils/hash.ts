@@ -113,11 +113,18 @@ export function generateRenderChunkPath(
  * @returns Full URL for fetching the blob
  */
 export function generateBlobUrl(blobPath: string): string {
-  // In development, this would be a local URL
-  // In production, this would be the Vercel Blob URL
-  const baseUrl = process.env.BLOB_READ_WRITE_TOKEN 
-    ? 'https://blob.vercel-storage.com' 
-    : 'http://localhost:3000/api/blob';
-  
-  return `${baseUrl}/${blobPath}`;
+  if (process.env.BLOB_READ_WRITE_TOKEN) {
+    // Extract store ID from the token (format: vercel_blob_rw_<store-id>_<rest>)
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
+    const match = token.match(/vercel_blob_rw_([^_]+)_/);
+    if (match) {
+      const storeId = match[1].toLowerCase();
+      return `https://${storeId}.public.blob.vercel-storage.com/${blobPath}`;
+    }
+    // Fallback to generic format if token parsing fails
+    return `https://blob.vercel-storage.com/${blobPath}`;
+  } else {
+    // Fallback to local development server
+    return `http://localhost:3000/api/blob/${blobPath}`;
+  }
 }

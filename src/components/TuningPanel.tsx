@@ -41,7 +41,7 @@ export default function TuningPanel({
   onSavePreset 
 }: TuningPanelProps) {
   const [sections, setSections] = useState<Section[]>([
-    { id: 'voice', title: 'Voice Settings', icon: <Volume2 size={18} />, expanded: true },
+    { id: 'voice', title: 'Voice Settings', icon: <Volume2 size={18} />, expanded: false },
     { id: 'cadence', title: 'Cadence & SSML', icon: <Sliders size={18} />, expanded: false },
     { id: 'chunking', title: 'Chunking', icon: <Scissors size={18} />, expanded: false },
     { id: 'stitching', title: 'Stitching', icon: <Link size={18} />, expanded: false },
@@ -92,9 +92,9 @@ export default function TuningPanel({
     description?: string;
   }) => (
     <div className="space-y-2">
-      <div className="flex justify-between items-center">
-        <label className="text-sm font-medium text-gray-700">{label}</label>
-        <span className="text-sm text-gray-500">{value}{unit}</span>
+      <div className="flex justify-between items-start gap-2">
+        <label className="text-sm font-medium text-gray-900 flex-1 leading-tight">{label}</label>
+        <span className="text-sm text-gray-900 font-semibold whitespace-nowrap">{value}{unit}</span>
       </div>
       <input
         type="range"
@@ -106,7 +106,7 @@ export default function TuningPanel({
         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
       />
       {description && (
-        <p className="text-xs text-gray-500">{description}</p>
+        <p className="text-xs text-gray-800 font-medium">{description}</p>
       )}
     </div>
   );
@@ -130,10 +130,10 @@ export default function TuningPanel({
           onChange={(e) => updateSettings(path, e.target.checked)}
           className="rounded border-gray-300 text-purple-600 focus:ring-purple-500"
         />
-        <span className="text-sm font-medium text-gray-700">{label}</span>
+        <span className="text-sm font-medium text-gray-900">{label}</span>
       </label>
       {description && (
-        <p className="text-xs text-gray-500 ml-6">{description}</p>
+        <p className="text-xs text-gray-800 font-medium ml-6">{description}</p>
       )}
     </div>
   );
@@ -152,13 +152,13 @@ export default function TuningPanel({
     description?: string;
   }) => (
     <div className="space-y-2">
-      <label className="text-sm font-medium text-gray-700">{label}</label>
+      <label className="text-sm font-medium text-gray-900">{label}</label>
       <select
         value={value}
         onChange={(e) => updateSettings(path, 
           typeof value === 'number' ? parseFloat(e.target.value) : e.target.value
         )}
-        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-gray-900 bg-white"
       >
         {options.map(option => (
           <option key={option.value} value={option.value}>
@@ -167,26 +167,26 @@ export default function TuningPanel({
         ))}
       </select>
       {description && (
-        <p className="text-xs text-gray-500">{description}</p>
+        <p className="text-xs text-gray-800 font-medium">{description}</p>
       )}
     </div>
   );
 
   return (
     <div className="bg-white rounded-lg shadow-lg border border-gray-200 p-6">
-      <div className="flex items-center justify-between mb-6">
-        <h3 className="text-xl font-bold text-gray-800">Voice Tuning Controls</h3>
+      <div className="mb-6">
+        <h3 className="text-xl font-bold text-gray-800 mb-3">Voice Tuning Controls</h3>
         <div className="flex items-center space-x-2">
           <button
             onClick={onReset}
-            className="flex items-center space-x-1 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors"
+            className="flex items-center space-x-1 px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-900 font-medium rounded-md transition-colors h-9"
           >
             <RotateCcw size={14} />
             <span>Reset</span>
           </button>
           <button
             onClick={() => setShowPresetSave(!showPresetSave)}
-            className="flex items-center space-x-1 px-3 py-1 text-sm bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-md transition-colors"
+            className="flex items-center space-x-1 px-4 py-2 text-sm bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-md transition-colors h-9"
           >
             <Save size={14} />
             <span>Save Preset</span>
@@ -221,7 +221,7 @@ export default function TuningPanel({
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-6">
         {sections.map(section => (
           <div key={section.id} className="border border-gray-200 rounded-lg">
             <button
@@ -230,7 +230,7 @@ export default function TuningPanel({
             >
               <div className="flex items-center space-x-2">
                 {section.icon}
-                <span className="font-medium text-gray-800">{section.title}</span>
+                <span className="font-semibold text-gray-900">{section.title}</span>
               </div>
               {section.expanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
             </button>
@@ -238,7 +238,7 @@ export default function TuningPanel({
             {section.expanded && (
               <div className="p-4 border-t border-gray-200 bg-gray-50">
                 {section.id === 'voice' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <SliderControl
                       label="Stability"
                       value={settings.eleven.stability}
@@ -277,7 +277,7 @@ export default function TuningPanel({
 
                 {section.id === 'cadence' && (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="space-y-6">
                       <SliderControl
                         label="Comma Pause"
                         value={settings.ssml.breakMs.comma}
@@ -316,7 +316,7 @@ export default function TuningPanel({
                       />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-6">
                       <SliderControl
                         label="Tag Density (per 10 words)"
                         value={settings.ssml.tagDensityMaxPer10Words}
@@ -357,7 +357,7 @@ export default function TuningPanel({
                 )}
 
                 {section.id === 'chunking' && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-4">
                     <SliderControl
                       label="Max Chunk Duration"
                       value={settings.chunking.maxSec}
@@ -391,7 +391,7 @@ export default function TuningPanel({
                 )}
 
                 {section.id === 'stitching' && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-4">
                     <SliderControl
                       label="Crossfade Duration"
                       value={settings.stitching.crossfadeMs}
@@ -431,7 +431,7 @@ export default function TuningPanel({
                     
                     {settings.mastering.enable && (
                       <>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="space-y-6">
                           <SliderControl
                             label="High-pass Filter"
                             value={settings.mastering.highpassHz}
@@ -464,8 +464,8 @@ export default function TuningPanel({
                         </div>
                         
                         <div className="p-4 bg-white rounded-lg border border-gray-200">
-                          <h4 className="font-medium text-gray-800 mb-3">Compressor</h4>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <h4 className="font-semibold text-gray-900 mb-3">Compressor</h4>
+                          <div className="space-y-6">
                             <SliderControl
                               label="Ratio"
                               value={settings.mastering.compressor.ratio}
@@ -506,8 +506,8 @@ export default function TuningPanel({
                         </div>
                         
                         <div className="p-4 bg-white rounded-lg border border-gray-200">
-                          <h4 className="font-medium text-gray-800 mb-3">Loudness Normalization</h4>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <h4 className="font-semibold text-gray-900 mb-3">Loudness Normalization</h4>
+                          <div className="space-y-4">
                             <SliderControl
                               label="Target LUFS"
                               value={settings.mastering.loudness.targetLUFS}
@@ -536,7 +536,7 @@ export default function TuningPanel({
                 )}
 
                 {section.id === 'export' && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-4">
                     <SelectControl
                       label="Format"
                       value={settings.export.format}
