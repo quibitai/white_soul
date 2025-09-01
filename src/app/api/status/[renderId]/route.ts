@@ -46,8 +46,8 @@ export async function GET(
           if (diagnosticsResponse.ok) {
             diagnostics = await diagnosticsResponse.json();
           }
-        } catch (error) {
-          console.warn('Could not load diagnostics:', error);
+        } catch {
+          console.warn('Could not load diagnostics');
         }
 
         // Try to get final audio URL
@@ -61,8 +61,8 @@ export async function GET(
             // Return direct blob URL for the final audio file
             finalUrl = generateBlobUrl(generateRenderPath(renderId, `final.${format}`));
           }
-        } catch (error) {
-          console.warn('Could not determine final URL:', error);
+        } catch {
+          console.warn('Could not determine final URL');
         }
 
         // Try to get SSML content
@@ -72,8 +72,8 @@ export async function GET(
           if (ssmlResponse.ok) {
             ssmlContent = await ssmlResponse.text();
           }
-        } catch (error) {
-          console.warn('Could not load SSML content:', error);
+        } catch {
+          console.warn('Could not load SSML content');
         }
       }
 
@@ -84,7 +84,7 @@ export async function GET(
         ssmlContent,
       });
 
-    } catch (error) {
+    } catch {
       // Status not found - render might not exist
       return NextResponse.json(
         { error: 'Render not found' },

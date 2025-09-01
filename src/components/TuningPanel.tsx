@@ -18,7 +18,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { TuningSettings, DEFAULT_TUNING_SETTINGS } from '@/lib/types/tuning';
+import { TuningSettings } from '@/lib/types/tuning';
 
 interface TuningPanelProps {
   settings: TuningSettings;

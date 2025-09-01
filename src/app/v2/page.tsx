@@ -7,8 +7,6 @@
 
 import { useState, useEffect } from 'react';
 import { 
-  Play, 
-  Pause, 
   Download, 
   Settings, 
   AlertCircle, 
@@ -26,7 +24,7 @@ import {
   type Diagnostics,
 } from '@/lib/types/tuning';
 import { startRender, type StartRenderResult } from '@/app/actions/startRender';
-import { generateRenderPath, generateBlobUrl } from '@/lib/utils/hash';
+
 
 interface RenderJob {
   renderId: string;
@@ -325,7 +323,7 @@ export default function V2Page() {
               {editedSSML && editedSSML !== currentJob.ssmlContent && (
                 <div className="mt-2 text-sm text-orange-600 flex items-center space-x-1">
                   <AlertCircle size={14} />
-                  <span>SSML has been modified. Click "Regenerate Audio" to apply changes.</span>
+                  <span>SSML has been modified. Click &quot;Regenerate Audio&quot; to apply changes.</span>
                 </div>
               )}
             </div>

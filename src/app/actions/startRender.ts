@@ -10,7 +10,6 @@ import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import { 
   TuningSettingsSchema, 
-  type TuningSettings,
   type RenderRequest,
   type RenderStatus,
   type Manifest,
@@ -71,7 +70,7 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
   console.log(`🚀 Starting render ${renderId}`);
   
   try {
-    // Generate content hashes for caching
+    // Generate content hashes for caching (used in request.json)
     const scriptHash = generateScriptHash(rawScript);
     const settingsHash = generateSettingsHash(settings);
     
@@ -254,10 +253,7 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
  * @param settingsHash - Hash of the settings
  * @returns Existing render ID if found, null otherwise
  */
-export async function findExistingRender(
-  scriptHash: string,
-  settingsHash: string
-): Promise<string | null> {
+export async function findExistingRender(): Promise<string | null> {
   // TODO: Implement cache lookup by listing blob storage
   // For now, always create new renders
   // In a future version, we could:

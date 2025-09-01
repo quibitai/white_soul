@@ -112,9 +112,9 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     console.log('🔗 Stitching chunks with crossfade...');
     const stitchedBuffer = await acrossfadeJoin(
       chunkBuffers,
-      settings.stitching.crossfadeMs,
-      settings.stitching.sampleRate,
-      settings.stitching.mono
+      finalSettings.stitching.crossfadeMs,
+      finalSettings.stitching.sampleRate,
+      finalSettings.stitching.mono
     );
     
     // Save raw stitched audio
@@ -135,13 +135,13 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     // Step 3: Master and encode
     console.log('🎚️ Mastering and encoding final audio...');
     const finalBuffer = await masterAndEncode(stitchedBuffer, {
-      ...settings.mastering,
-      format: settings.export.format,
-      bitrateKbps: settings.export.bitrateKbps,
+      ...finalSettings.mastering,
+      format: finalSettings.export.format,
+      bitrateKbps: finalSettings.export.bitrateKbps,
     });
     
     // Save final audio
-    const extension = settings.export.format;
+    const extension = finalSettings.export.format;
     const finalKey = generateRenderPath(renderId, `final.${extension}`);
     await put(finalKey, finalBuffer, { 
       access: 'public',
