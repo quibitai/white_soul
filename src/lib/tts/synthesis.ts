@@ -4,6 +4,7 @@
  */
 
 import { TuningSettings } from '@/lib/types/tuning';
+import { cleanSSMLForSynthesis } from '@/lib/styling/ssml';
 
 /**
  * Options for ElevenLabs synthesis
@@ -32,6 +33,9 @@ export async function synthesizeElevenLabs(
     throw new Error('SSML content is required');
   }
 
+  // Clean SSML to fix malformed tags before synthesis
+  const cleanedSSML = cleanSSMLForSynthesis(ssmlContent);
+
   if (!process.env.ELEVENLABS_API_KEY) {
     throw new Error('ELEVENLABS_API_KEY environment variable is required');
   }
@@ -51,7 +55,7 @@ export async function synthesizeElevenLabs(
   const url = `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=${outputFormat}`;
 
   const requestBody: Record<string, unknown> = {
-    text: ssmlContent.trim(),
+    text: cleanedSSML.trim(),
     model_id: modelId,
     voice_settings: {
       stability: voiceSettings.stability,
@@ -77,13 +81,13 @@ export async function synthesizeElevenLabs(
 
   console.log('🎙️ ElevenLabs synthesis:', {
     model: modelId,
-    textLength: ssmlContent.length,
-    hasSSML: /<[^>]+>/.test(ssmlContent),
-    hasBreaks: /<break\s+time="[^"]+"\s*\/?>/.test(ssmlContent),
+    textLength: cleanedSSML.length,
+    hasSSML: /<[^>]+>/.test(cleanedSSML),
+    hasBreaks: /<break\s+time="[^"]+"\s*\/?>/.test(cleanedSSML),
     hasContext: !!(previousText || nextText),
     stability: voiceSettings.stability,
     style: voiceSettings.style,
-    ssmlPreview: ssmlContent.slice(0, 200) + (ssmlContent.length > 200 ? '...' : ''),
+    ssmlPreview: cleanedSSML.slice(0, 200) + (cleanedSSML.length > 200 ? '...' : ''),
   });
 
   try {

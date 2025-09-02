@@ -128,13 +128,18 @@ function validateAndCleanSSML(ssml: string, config: VoiceConfig): string {
   // Remove empty prosody tags
   cleaned = cleaned.replace(/<prosody[^>]*>\s*<\/prosody>/g, '');
 
-  // Fix malformed break tags (remove invalid // syntax)
+  // Fix malformed break tags (remove invalid // syntax and other malformations)
   cleaned = cleaned.replace(/<break([^>]*?)\/\/>/g, '<break$1/>');
   cleaned = cleaned.replace(/<break([^>]*?)\/\/\s*>/g, '<break$1/>');
+  cleaned = cleaned.replace(/<break([^>]*?)\/\/\s*\/>/g, '<break$1/>');
   
   // Fix break tags (ensure self-closing)
   cleaned = cleaned.replace(/<break([^>]*)>(?!\s*<\/break>)/g, '<break$1/>');
   cleaned = cleaned.replace(/<break([^>]*)><\/break>/g, '<break$1/>');
+  
+  // Additional cleanup for any remaining malformed break syntax
+  cleaned = cleaned.replace(/<break\s+time="([^"]+)"\s*\/\/\s*>/g, '<break time="$1"/>');
+  cleaned = cleaned.replace(/<break\s+time="([^"]+)"\s*\/\/>/g, '<break time="$1"/>');
 
   // Ensure break time values are valid using config limits and minimum duration
   cleaned = cleaned.replace(/time="(\d+(?:\.\d+)?)s?"/g, (match, value) => {
@@ -198,4 +203,35 @@ export function extractTextFromSSML(ssml: string): string {
  */
 export function getSSMLContentLength(ssml: string): number {
   return extractTextFromSSML(ssml).length;
+}
+
+/**
+ * Aggressively cleans SSML to fix common malformations before TTS synthesis
+ * @param {string} ssml - SSML markup to clean
+ * @returns {string} Cleaned SSML safe for TTS synthesis
+ */
+export function cleanSSMLForSynthesis(ssml: string): string {
+  if (!ssml) return ssml;
+  
+  let cleaned = ssml;
+  
+  // Fix all variations of malformed break tags
+  cleaned = cleaned.replace(/<break([^>]*?)\/\/>/g, '<break$1/>');
+  cleaned = cleaned.replace(/<break([^>]*?)\/\/\s*>/g, '<break$1/>');
+  cleaned = cleaned.replace(/<break([^>]*?)\/\/\s*\/>/g, '<break$1/>');
+  cleaned = cleaned.replace(/<break\s+time="([^"]+)"\s*\/\/\s*>/g, '<break time="$1"/>');
+  cleaned = cleaned.replace(/<break\s+time="([^"]+)"\s*\/\/>/g, '<break time="$1"/>');
+  
+  // Fix any remaining malformed self-closing tags
+  cleaned = cleaned.replace(/\/\/>/g, '/>');
+  
+  // Ensure proper SSML structure
+  if (!cleaned.startsWith('<speak>') && !cleaned.includes('<speak>')) {
+    cleaned = `<speak>${cleaned}</speak>`;
+  }
+  
+  // Remove any text that might be read as "slash slash"
+  cleaned = cleaned.replace(/\s*\/\/\s*/g, ' ');
+  
+  return cleaned.trim();
 }
