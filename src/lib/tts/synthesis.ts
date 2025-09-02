@@ -109,12 +109,15 @@ export async function synthesizeElevenLabs(
     console.log('🎤 Voice ID:', voiceId);
     console.log('🤖 Model ID:', modelId);
     
-    // Add timeout to prevent hanging
+    // Add timeout to prevent hanging - reduced to 15s for faster debugging
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.error('⏰ ElevenLabs API request timeout (30s)');
+      console.error('⏰ ElevenLabs API request timeout (15s)');
       controller.abort();
-    }, 30000); // 30 second timeout
+    }, 15000); // 15 second timeout for faster feedback
+    
+    console.log('📤 Sending request to:', url);
+    console.log('📦 Request body size:', JSON.stringify(requestBody).length, 'bytes');
     
     const response = await fetch(url, {
       method: 'POST',
@@ -126,6 +129,8 @@ export async function synthesizeElevenLabs(
       body: JSON.stringify(requestBody),
       signal: controller.signal,
     });
+    
+    console.log('📨 Fetch completed, processing response...');
     
     clearTimeout(timeoutId);
     console.log(`📡 ElevenLabs API response: ${response.status} ${response.statusText}`);
