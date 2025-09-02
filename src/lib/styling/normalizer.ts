@@ -4,12 +4,12 @@
  * to ensure consistent text processing for TTS synthesis.
  */
 
-import { VoiceConfig } from './config';
+// VoiceConfig import removed as it's no longer used in normalize function
 
 /**
  * Normalizes text for TTS processing by standardizing quotes, dashes, and spacing
  * @param {string} text - Raw input text to normalize
- * @param {VoiceConfig} config - Voice configuration settings
+
  * @returns {string} Normalized text ready for further processing
  */
 export function normalize(text: string): string {

@@ -74,7 +74,7 @@ export async function annotateTextToSSML(
   const config = await loadConfig();
 
   // Step 1: Normalize text
-  const normalized = normalize(rawText, config);
+  const normalized = normalize(rawText);
   
   // Step 2: Apply conversational realism
   const conversational = applyConversationalRealism(normalized, config);

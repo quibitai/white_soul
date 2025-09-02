@@ -66,8 +66,6 @@ export function makeChunks(
   ssmlContent: string,
   settings: TuningSettings
 ): ChunkingResult {
-  // Extract plain text for analysis
-  const plainText = extractTextFromSSML(ssmlContent);
   
   // Segment into sentences for boundary detection
   const sentences = segmentIntoSentences(ssmlContent);

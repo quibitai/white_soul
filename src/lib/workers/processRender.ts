@@ -365,50 +365,7 @@ async function debugListBlobs(renderId: string) {
   }
 }
 
-/**
- * Fetch blob with retry and exponential backoff for newly created blobs
- */
-async function fetchBlobWithRetryLegacy(url: string, maxRetries: number = 5): Promise<Response> {
-  let lastError: Error | null = null;
-  
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      console.log(`🔍 Fetching blob (attempt ${attempt}/${maxRetries}): ${url}`);
-      
-      const response = await fetch(url);
-      
-      if (response.ok) {
-        console.log(`✅ Blob fetch successful on attempt ${attempt}`);
-        return response;
-      }
-      
-      // If it's a 403/404, it might be eventual consistency - retry
-      if (response.status === 403 || response.status === 404) {
-        lastError = new Error(`HTTP ${response.status}: ${response.statusText}`);
-        
-        if (attempt < maxRetries) {
-          const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Cap at 10s
-          console.log(`⏳ Blob not ready (${response.status}), retrying in ${delayMs}ms...`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-          continue;
-        }
-      } else {
-        // Other HTTP errors - don't retry
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      
-      if (attempt < maxRetries) {
-        const delayMs = Math.min(1000 * Math.pow(2, attempt - 1), 10000);
-        console.log(`❌ Fetch error (attempt ${attempt}), retrying in ${delayMs}ms:`, error);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
-      }
-    }
-  }
-  
-  throw new Error(`Failed to fetch blob after ${maxRetries} attempts: ${lastError?.message}`);
-}
+
 
 /**
  * Load manifest from blob storage using actual Vercel URLs with retry
