@@ -29,7 +29,7 @@ export function applyWST2Rules(text: string, config: VoiceConfig): string {
  * Applies WST2 Break Tag System
  * Controls pacing and breath logic in generated speech
  */
-function applyBreakTagSystem(text: string, _config: VoiceConfig): string {
+function applyBreakTagSystem(text: string): string {
   let processed = text;
 
   // Convert pause macros to WST2 break system
@@ -116,7 +116,7 @@ function applyAllCapsEmphasis(text: string, config: VoiceConfig): string {
  * Applies WST2 Punctuation + Space Logic
  * Ensures correct flow in synthesized voice
  */
-function applyPunctuationSpaceLogic(text: string, _config: VoiceConfig): string {
+function applyPunctuationSpaceLogic(text: string): string {
   let processed = text;
 
   // WST2 Ellipses rules

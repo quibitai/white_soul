@@ -121,9 +121,9 @@ export function isBlobStorageAvailable(): boolean {
  * @param {number} retentionDays - Number of days to retain files
  * @returns {Promise<number>} Number of files deleted (always 0 for now)
  */
-export async function cleanupOldAudioFiles(_retentionDays: number = 14): Promise<number> {
+export async function cleanupOldAudioFiles(retentionDays: number = 14): Promise<number> {
   // TODO: Implement cleanup when file tracking is added
   // For now, rely on manual cleanup or external processes
-  console.warn('Automatic cleanup not implemented for Vercel Blob. Consider implementing file tracking.');
+  console.warn(`Automatic cleanup not implemented for Vercel Blob (${retentionDays} days retention). Consider implementing file tracking.`);
   return 0;
 }

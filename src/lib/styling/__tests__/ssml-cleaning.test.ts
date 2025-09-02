@@ -57,8 +57,8 @@ describe('SSML Cleaning', () => {
 
     it('should handle empty or null input gracefully', () => {
       expect(cleanSSMLForSynthesis('')).toBe('');
-      expect(cleanSSMLForSynthesis(null as any)).toBe(null);
-      expect(cleanSSMLForSynthesis(undefined as any)).toBe(undefined);
+      expect(cleanSSMLForSynthesis(null as string)).toBe(null);
+      expect(cleanSSMLForSynthesis(undefined as string)).toBe(undefined);
     });
 
     it('should fix the specific example from the user logs', () => {

@@ -18,14 +18,14 @@ import {
 } from '@/lib/utils/hash';
 import { synthesizeWithRetry } from '@/lib/tts/synthesis';
 import { acrossfadeJoin, masterAndEncode, analyzeAudio } from '@/lib/audio/ffmpeg';
-import { getBlobRetryConfig, getTimeoutConfig, logEnvironmentInfo } from '@/lib/config/vercel';
+import { getBlobRetryConfig, logEnvironmentInfo } from '@/lib/config/vercel';
 import { cacheMonitor, logCachePerformance } from '@/lib/utils/cache-monitor';
 
 /**
  * Retry fetch with exponential backoff for blob availability
  * Enhanced with better error handling and longer delays for Vercel Blob consistency
  */
-async function fetchWithRetry(url: string, maxRetries?: number): Promise<Response> {
+async function fetchBlobWithRetry(url: string, maxRetries?: number): Promise<Response> {
   const retryConfig = getBlobRetryConfig();
   const actualMaxRetries = maxRetries ?? retryConfig.maxRetries;
   
@@ -279,7 +279,7 @@ async function synthesizeChunks(
           cacheMonitor.recordHit('chunks');
         }
       }
-    } catch (error) {
+    } catch {
       // Quick fail for cache checks - don't retry
       console.log(`🔄 Cache miss for chunk ${i}, synthesizing...`);
       cacheMonitor.recordMiss('chunks');
@@ -366,54 +366,9 @@ async function debugListBlobs(renderId: string) {
 }
 
 /**
- * Verify blob accessibility before proceeding
- */
-async function verifyBlobAccessibility(renderId: string): Promise<void> {
-  const manifestUrl = generateBlobUrl(generateRenderPath(renderId, 'manifest.json'));
-  const maxAttempts = 10;
-  
-  console.log('🔍 Verifying blob accessibility...');
-  
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    try {
-      const response = await fetch(manifestUrl, { method: 'HEAD' });
-      if (response.ok) {
-        console.log(`✅ Blob accessible on attempt ${attempt}`);
-        return;
-      }
-      
-      console.log(`⏳ Blob not accessible (${response.status}), waiting... (${attempt}/${maxAttempts})`);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    } catch (error) {
-      console.log(`⏳ Blob check failed, waiting... (${attempt}/${maxAttempts}):`, error);
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
-  }
-  
-  throw new Error('Blob never became accessible after verification attempts');
-}
-
-/**
- * Get actual blob URL from Vercel Blob list
- */
-async function getActualBlobUrl(renderId: string, filename: string): Promise<string> {
-  const renderPrefix = `tts/renders/${renderId}/`;
-  const targetPath = `${renderPrefix}${filename}`;
-  
-  const { blobs } = await list({ prefix: renderPrefix });
-  const blob = blobs.find(b => b.pathname === targetPath);
-  
-  if (!blob) {
-    throw new Error(`Blob not found: ${targetPath}`);
-  }
-  
-  return blob.url;
-}
-
-/**
  * Fetch blob with retry and exponential backoff for newly created blobs
  */
-async function fetchBlobWithRetry(url: string, maxRetries: number = 5): Promise<Response> {
+async function fetchBlobWithRetryLegacy(url: string, maxRetries: number = 5): Promise<Response> {
   let lastError: Error | null = null;
   
   for (let attempt = 1; attempt <= maxRetries; attempt++) {

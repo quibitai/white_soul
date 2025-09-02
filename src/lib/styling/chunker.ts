@@ -186,7 +186,7 @@ function processChunkBoundary(chunkText: string, config: VoiceConfig, isLastChun
 /**
  * Determines if there should be a natural break after a sentence
  */
-function isNaturalBreakPoint(currentSentence: string, nextSentence?: string, _index?: number, _totalSentences?: number): boolean {
+function isNaturalBreakPoint(currentSentence: string, nextSentence?: string): boolean {
   const current = currentSentence.toLowerCase();
   const next = nextSentence?.toLowerCase() || '';
   
