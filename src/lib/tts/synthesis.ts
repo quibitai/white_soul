@@ -4,7 +4,7 @@
  */
 
 import { TuningSettings } from '@/lib/types/tuning';
-import { cleanSSMLForSynthesis } from '@/lib/styling/ssml';
+import { cleanSSMLForSynthesis, validateSSMLForSynthesis } from '@/lib/styling/ssml';
 
 /**
  * Options for ElevenLabs synthesis
@@ -79,6 +79,17 @@ export async function synthesizeElevenLabs(
     requestBody.next_text = nextText.slice(0, 300); // First 300 chars for context
   }
 
+  // Validate SSML before sending to ElevenLabs
+  const validation = validateSSMLForSynthesis(cleanedSSML);
+  if (!validation.isValid) {
+    console.error('❌ SSML validation failed:', validation.issues);
+    throw new Error(`Invalid SSML: ${validation.issues.join(', ')}`);
+  }
+  
+  if (validation.warnings.length > 0) {
+    console.warn('⚠️ SSML validation warnings:', validation.warnings);
+  }
+
   console.log('🎙️ ElevenLabs synthesis:', {
     model: modelId,
     textLength: cleanedSSML.length,
@@ -87,10 +98,21 @@ export async function synthesizeElevenLabs(
     hasContext: !!(previousText || nextText),
     stability: voiceSettings.stability,
     style: voiceSettings.style,
+    validationPassed: validation.isValid,
+    warnings: validation.warnings.length,
     ssmlPreview: cleanedSSML.slice(0, 200) + (cleanedSSML.length > 200 ? '...' : ''),
   });
 
   try {
+    console.log('🌐 Making ElevenLabs API request...');
+    
+    // Add timeout to prevent hanging
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      console.error('⏰ ElevenLabs API request timeout (30s)');
+      controller.abort();
+    }, 30000); // 30 second timeout
+    
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -99,7 +121,10 @@ export async function synthesizeElevenLabs(
         'Accept': format === 'wav' ? 'audio/wav' : 'audio/mpeg',
       },
       body: JSON.stringify(requestBody),
+      signal: controller.signal,
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}`;
@@ -127,11 +152,16 @@ export async function synthesizeElevenLabs(
     return audioBuffer;
 
   } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      console.error('❌ ElevenLabs synthesis timeout after 30 seconds');
+      throw new Error('Synthesis timeout - ElevenLabs API took too long to respond');
+    }
+    
     console.error('❌ ElevenLabs synthesis failed:', error);
     
     if (error instanceof Error) {
       // Add context to error message
-      throw new Error(`TTS synthesis failed for ${ssmlContent.slice(0, 50)}...: ${error.message}`);
+      throw new Error(`TTS synthesis failed for ${cleanedSSML.slice(0, 50)}...: ${error.message}`);
     }
     
     throw new Error('TTS synthesis failed: Unknown error');

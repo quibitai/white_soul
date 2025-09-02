@@ -207,6 +207,7 @@ export function getSSMLContentLength(ssml: string): number {
 
 /**
  * Aggressively cleans SSML to fix common malformations before TTS synthesis
+ * Optimized for ElevenLabs multilingual v2 model compatibility
  * @param {string} ssml - SSML markup to clean
  * @returns {string} Cleaned SSML safe for TTS synthesis
  */
@@ -214,6 +215,18 @@ export function cleanSSMLForSynthesis(ssml: string): string {
   if (!ssml) return ssml;
   
   let cleaned = ssml;
+  
+  console.log('🧹 Cleaning SSML for multilingual v2 model:', {
+    originalLength: ssml.length,
+    hasDoubleSlash: ssml.includes('//'),
+    hasPhoneme: ssml.includes('<phoneme'),
+    preview: ssml.slice(0, 100) + (ssml.length > 100 ? '...' : '')
+  });
+  
+  // CRITICAL: Remove phoneme tags - NOT supported by multilingual v2 model
+  // According to ElevenLabs docs, phoneme tags only work with Flash v2, Turbo v2, and English v1
+  cleaned = cleaned.replace(/<phoneme[^>]*>([^<]+)<\/phoneme>/g, '$1');
+  console.log('🚫 Removed phoneme tags (not supported by multilingual v2)');
   
   // Fix all variations of malformed break tags
   cleaned = cleaned.replace(/<break([^>]*?)\/\/>/g, '<break$1/>');
@@ -225,13 +238,108 @@ export function cleanSSMLForSynthesis(ssml: string): string {
   // Fix any remaining malformed self-closing tags
   cleaned = cleaned.replace(/\/\/>/g, '/>');
   
+  // Remove any text that might be read as "slash slash"
+  cleaned = cleaned.replace(/\s*\/\/\s*/g, ' ');
+  
+  // Validate and fix break tag time values according to ElevenLabs format
+  cleaned = cleaned.replace(/<break\s+time="([^"]+)"\s*\/>/g, (match, timeValue) => {
+    // Ensure time value is valid (number followed by 's' or 'ms')
+    if (!/^\d+(\.\d+)?(s|ms)$/.test(timeValue)) {
+      console.warn(`⚠️ Invalid break time value: ${timeValue}, defaulting to 0.5s`);
+      return '<break time="0.5s"/>';
+    }
+    // Convert milliseconds to seconds if needed (ElevenLabs prefers seconds)
+    if (timeValue.endsWith('ms')) {
+      const ms = parseFloat(timeValue.replace('ms', ''));
+      const seconds = (ms / 1000).toFixed(1);
+      console.log(`🔄 Converting ${timeValue} to ${seconds}s`);
+      return `<break time="${seconds}s"/>`;
+    }
+    return match;
+  });
+  
   // Ensure proper SSML structure
   if (!cleaned.startsWith('<speak>') && !cleaned.includes('<speak>')) {
     cleaned = `<speak>${cleaned}</speak>`;
   }
   
-  // Remove any text that might be read as "slash slash"
-  cleaned = cleaned.replace(/\s*\/\/\s*/g, ' ');
+  // Final validation - check for any remaining malformed tags
+  const malformedTags = cleaned.match(/<[^>]*\/\/[^>]*>/g);
+  if (malformedTags) {
+    console.warn('⚠️ Still found malformed tags after cleaning:', malformedTags);
+  }
+  
+  console.log('✅ SSML cleaning completed for multilingual v2:', {
+    cleanedLength: cleaned.length,
+    hasDoubleSlash: cleaned.includes('//'),
+    hasPhoneme: cleaned.includes('<phoneme'),
+    breakTagCount: (cleaned.match(/<break[^>]*\/>/g) || []).length,
+    lexemeTagCount: (cleaned.match(/<lexeme[^>]*>/g) || []).length,
+    preview: cleaned.slice(0, 100) + (cleaned.length > 100 ? '...' : '')
+  });
   
   return cleaned.trim();
+}
+
+/**
+ * Validates SSML for common issues that could cause synthesis to fail
+ * @param {string} ssml - SSML markup to validate
+ * @returns {object} Validation result with issues found
+ */
+export function validateSSMLForSynthesis(ssml: string): {
+  isValid: boolean;
+  issues: string[];
+  warnings: string[];
+} {
+  const issues: string[] = [];
+  const warnings: string[] = [];
+  
+  if (!ssml || !ssml.trim()) {
+    issues.push('SSML content is empty');
+    return { isValid: false, issues, warnings };
+  }
+  
+  // Check for basic SSML structure
+  if (!ssml.includes('<speak>') || !ssml.includes('</speak>')) {
+    issues.push('Missing <speak> tags');
+  }
+  
+  // Check for malformed break tags
+  const malformedBreaks = ssml.match(/<break[^>]*\/\/[^>]*>/g);
+  if (malformedBreaks) {
+    issues.push(`Found ${malformedBreaks.length} malformed break tags with //`);
+  }
+  
+  // Check for phoneme tags (not supported by multilingual v2)
+  const phonemeTags = ssml.match(/<phoneme[^>]*>/g);
+  if (phonemeTags) {
+    warnings.push(`Found ${phonemeTags.length} phoneme tags - not supported by multilingual v2 model`);
+  }
+  
+  // Check for invalid break time values
+  const breakTags = ssml.match(/<break\s+time="([^"]+)"\s*\/>/g) || [];
+  breakTags.forEach(tag => {
+    const timeMatch = tag.match(/time="([^"]+)"/);
+    if (timeMatch && !/^\d+(\.\d+)?(s|ms)$/.test(timeMatch[1])) {
+      issues.push(`Invalid break time value: ${timeMatch[1]}`);
+    }
+  });
+  
+  // Check for unclosed tags
+  const openTags = (ssml.match(/<(?!\/)[^>]+>/g) || []).filter(tag => !tag.endsWith('/>'));
+  const closeTags = ssml.match(/<\/[^>]+>/g) || [];
+  if (openTags.length !== closeTags.length) {
+    warnings.push('Possible unclosed tags detected');
+  }
+  
+  // Check for extremely long content that might timeout
+  if (ssml.length > 5000) {
+    warnings.push(`SSML content is very long (${ssml.length} chars) - may cause timeout`);
+  }
+  
+  return {
+    isValid: issues.length === 0,
+    issues,
+    warnings
+  };
 }

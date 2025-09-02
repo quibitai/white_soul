@@ -3,7 +3,7 @@
  * Ensures malformed SSML tags are properly fixed before TTS synthesis
  */
 
-import { cleanSSMLForSynthesis } from '../ssml';
+import { cleanSSMLForSynthesis, validateSSMLForSynthesis } from '../ssml';
 
 describe('SSML Cleaning', () => {
   describe('cleanSSMLForSynthesis', () => {
@@ -69,6 +69,49 @@ describe('SSML Cleaning', () => {
       expect(result).toContain('<break time="0.1s"/>');
       expect(result).not.toContain('//');
       expect(result).not.toContain('three S slash slash');
+    });
+
+    it('should remove phoneme tags (not supported by multilingual v2)', () => {
+      const ssmlWithPhoneme = '<speak>The word <phoneme alphabet="ipa" ph="təˈmeɪtoʊ">tomato</phoneme> is pronounced correctly.</speak>';
+      const cleaned = cleanSSMLForSynthesis(ssmlWithPhoneme);
+      expect(cleaned).toBe('<speak>The word tomato is pronounced correctly.</speak>');
+      expect(cleaned).not.toContain('<phoneme');
+    });
+
+    it('should convert milliseconds to seconds in break tags', () => {
+      const ssmlWithMs = '<speak>Wait <break time="500ms"/> for it.</speak>';
+      const cleaned = cleanSSMLForSynthesis(ssmlWithMs);
+      expect(cleaned).toContain('<break time="0.5s"/>');
+      expect(cleaned).not.toContain('ms');
+    });
+  });
+
+  describe('validateSSMLForSynthesis', () => {
+    it('should validate correct SSML', () => {
+      const validSSML = '<speak>Hello <break time="1s"/> world!</speak>';
+      const result = validateSSMLForSynthesis(validSSML);
+      expect(result.isValid).toBe(true);
+      expect(result.issues).toHaveLength(0);
+    });
+
+    it('should detect phoneme tags as warnings', () => {
+      const ssmlWithPhoneme = '<speak>The <phoneme alphabet="ipa" ph="test">word</phoneme> here.</speak>';
+      const result = validateSSMLForSynthesis(ssmlWithPhoneme);
+      expect(result.warnings).toContain('Found 1 phoneme tags - not supported by multilingual v2 model');
+    });
+
+    it('should detect malformed break tags as issues', () => {
+      const malformedSSML = '<speak>Wait <break time="1s"//> please.</speak>';
+      const result = validateSSMLForSynthesis(malformedSSML);
+      expect(result.isValid).toBe(false);
+      expect(result.issues).toContain('Found 1 malformed break tags with //');
+    });
+
+    it('should detect missing speak tags', () => {
+      const noSpeakTags = 'Hello world!';
+      const result = validateSSMLForSynthesis(noSpeakTags);
+      expect(result.isValid).toBe(false);
+      expect(result.issues).toContain('Missing <speak> tags');
     });
   });
 });
