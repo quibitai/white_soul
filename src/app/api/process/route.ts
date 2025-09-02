@@ -19,8 +19,10 @@ const ProcessRequestSchema = z.object({
  * Process a queued render job
  */
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  console.log(`🌐 API ENTRY: /api/process POST called`);
   try {
     const body = await req.json();
+    console.log(`📦 Request body:`, body);
     const { renderId } = ProcessRequestSchema.parse(body);
 
     console.log(`🚀 Processing render ${renderId}`);

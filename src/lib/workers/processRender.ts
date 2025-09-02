@@ -88,6 +88,7 @@ async function fetchBlobWithRetry(url: string, maxRetries?: number): Promise<Res
  */
 export async function processRender(renderId: string, manifest?: Manifest, settings?: TuningSettings): Promise<{ finalKey: string }> {
   console.log(`🔄 Processing render ${renderId}`);
+  console.log(`🚀 FUNCTION ENTRY: processRender called with renderId=${renderId}`);
   
   // Log environment info for debugging deployment issues
   logEnvironmentInfo();
