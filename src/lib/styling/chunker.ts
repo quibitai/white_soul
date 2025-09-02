@@ -131,7 +131,7 @@ function segmentNaturally(text: string): string[] {
     currentSegment.push(sentence);
     
     // Determine if this is a natural break point
-    const shouldBreak = isNaturalBreakPoint(sentence, sentences[i + 1], i, sentences.length);
+    const shouldBreak = isNaturalBreakPoint(sentence, sentences[i + 1]);
     
     if (shouldBreak && currentSegment.length > 0) {
       // Join sentences with natural spacing
