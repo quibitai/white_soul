@@ -258,6 +258,20 @@ async function synthesizeChunks(
     const chunk = manifest.chunks[i];
     console.log(`🎙️ Processing chunk ${i + 1}/${manifest.chunks.length} (${chunk.hash.slice(0, 8)}...)`);
     
+    // Update status to show current chunk progress
+    await updateStatus(renderId, {
+      state: 'running',
+      progress: {
+        total: manifest.chunks.length,
+        done: i,
+      },
+      steps: [
+        { name: 'ssml', ok: true },
+        { name: 'chunk', ok: true },
+        { name: 'synthesize', ok: false, done: i, total: manifest.chunks.length },
+      ],
+    });
+    
     // Check cache first with shorter retry for cache checks
     const cacheKey = generateChunkCacheKey(chunk.hash);
     let audioBuffer: Buffer | null = null;
@@ -295,24 +309,29 @@ async function synthesizeChunks(
         const voiceId = process.env.ELEVEN_VOICE_ID;
         const modelId = process.env.ELEVEN_MODEL_ID || 'eleven_multilingual_v2';
         const apiKey = process.env.ELEVENLABS_API_KEY;
+        const bypassMode = process.env.BYPASS_ELEVENLABS === 'true';
         
         console.log('🔧 Environment check:', {
           hasVoiceId: !!voiceId,
           hasApiKey: !!apiKey,
           modelId,
+          bypassMode,
           voiceIdPreview: voiceId ? `${voiceId.slice(0, 8)}...` : 'MISSING'
         });
         
-        if (!voiceId) {
+        if (!bypassMode && !voiceId) {
           throw new Error('ELEVEN_VOICE_ID environment variable is not set');
         }
         
-        if (!apiKey) {
+        if (!bypassMode && !apiKey) {
           throw new Error('ELEVENLABS_API_KEY environment variable is not set');
         }
         
+        console.log('🚀 About to call synthesizeWithRetry...');
+        const startTime = Date.now();
+        
         audioBuffer = await synthesizeWithRetry(chunk.ssml, {
-          voiceId,
+          voiceId: voiceId || 'dummy',
           modelId,
           voiceSettings: settings.eleven,
           format: 'pcm', // Use PCM format for ElevenLabs compatibility
@@ -320,6 +339,9 @@ async function synthesizeChunks(
           previousText: chunk.ix > 0 ? manifest.chunks[chunk.ix - 1].text.slice(-300) : undefined,
           nextText: chunk.ix < manifest.chunks.length - 1 ? manifest.chunks[chunk.ix + 1].text.slice(0, 300) : undefined,
         });
+        
+        const duration = Date.now() - startTime;
+        console.log(`⏱️ Synthesis took ${duration}ms`);
         
         console.log(`✅ Synthesis completed for chunk ${i + 1}, buffer size: ${audioBuffer.length} bytes`);
         
