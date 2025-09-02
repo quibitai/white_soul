@@ -243,19 +243,33 @@ export function cleanSSMLForSynthesis(ssml: string): string {
   
   // Validate and fix break tag time values according to ElevenLabs format
   cleaned = cleaned.replace(/<break\s+time="([^"]+)"\s*\/>/g, (match, timeValue) => {
-    // Ensure time value is valid (number followed by 's' or 'ms')
-    if (!/^\d+(\.\d+)?(s|ms)$/.test(timeValue)) {
+    // Clean up the time value first (remove extra spaces)
+    const cleanTimeValue = timeValue.replace(/\s+/g, '');
+    
+    // More flexible regex to handle various formats
+    const timeMatch = cleanTimeValue.match(/^(\d+(?:\.\d+)?)(s|ms)?$/);
+    
+    if (!timeMatch) {
       console.warn(`⚠️ Invalid break time value: ${timeValue}, defaulting to 0.5s`);
       return '<break time="0.5s"/>';
     }
+    
+    const [, number, unit] = timeMatch;
+    const numValue = parseFloat(number);
+    
     // Convert milliseconds to seconds if needed (ElevenLabs prefers seconds)
-    if (timeValue.endsWith('ms')) {
-      const ms = parseFloat(timeValue.replace('ms', ''));
-      const seconds = (ms / 1000).toFixed(1);
+    if (unit === 'ms') {
+      const seconds = (numValue / 1000).toFixed(1);
       console.log(`🔄 Converting ${timeValue} to ${seconds}s`);
       return `<break time="${seconds}s"/>`;
     }
-    return match;
+    
+    // Default to seconds if no unit specified
+    const finalValue = unit === 's' ? `${numValue}s` : `${numValue}s`;
+    if (timeValue !== finalValue) {
+      console.log(`🔧 Fixed break time: ${timeValue} → ${finalValue}`);
+    }
+    return `<break time="${finalValue}"/>`;
   });
   
   // Ensure proper SSML structure
@@ -299,9 +313,17 @@ export function validateSSMLForSynthesis(ssml: string): {
     return { isValid: false, issues, warnings };
   }
   
-  // Check for basic SSML structure
-  if (!ssml.includes('<speak>') || !ssml.includes('</speak>')) {
+  // Check for basic SSML structure - be more flexible with whitespace
+  const trimmedSSML = ssml.trim();
+  if (!trimmedSSML.includes('<speak>') || !trimmedSSML.includes('</speak>')) {
     issues.push('Missing <speak> tags');
+    console.error('🔍 SSML validation debug:', {
+      hasOpenTag: trimmedSSML.includes('<speak>'),
+      hasCloseTag: trimmedSSML.includes('</speak>'),
+      startsWithSpeak: trimmedSSML.startsWith('<speak>'),
+      endsWithSpeak: trimmedSSML.endsWith('</speak>'),
+      preview: trimmedSSML.slice(0, 100) + '...'
+    });
   }
   
   // Check for malformed break tags
