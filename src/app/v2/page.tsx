@@ -295,6 +295,24 @@ export default function V2Page() {
                     </>
                   )}
                 </button>
+                
+                {/* Test Button for Debugging */}
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('/api/test-synthesis', { method: 'POST' });
+                      const result = await response.json();
+                      console.log('Test result:', result);
+                      alert(result.success ? 'Test successful!' : `Test failed: ${result.error}`);
+                    } catch (error) {
+                      console.error('Test error:', error);
+                      alert('Test failed - check console');
+                    }
+                  }}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white font-semibold rounded-lg transition-all duration-200"
+                >
+                  Test API
+                </button>
               </div>
             </div>
 

@@ -29,6 +29,15 @@ export async function synthesizeElevenLabs(
   ssmlContent: string,
   options: SynthesisOptions
 ): Promise<Buffer> {
+  // TEMPORARY: Add emergency bypass for debugging
+  const BYPASS_ELEVENLABS = process.env.BYPASS_ELEVENLABS === 'true';
+  
+  if (BYPASS_ELEVENLABS) {
+    console.log('🚨 BYPASS MODE: Returning dummy audio buffer instead of calling ElevenLabs');
+    // Return a small dummy audio buffer (1 second of silence)
+    const dummyBuffer = Buffer.alloc(44100 * 2); // 1 second of 16-bit stereo silence
+    return dummyBuffer;
+  }
   if (!ssmlContent?.trim()) {
     throw new Error('SSML content is required');
   }
@@ -109,12 +118,12 @@ export async function synthesizeElevenLabs(
     console.log('🎤 Voice ID:', voiceId);
     console.log('🤖 Model ID:', modelId);
     
-    // Add timeout to prevent hanging - reduced to 15s for faster debugging
+    // Add aggressive timeout to prevent hanging - reduced to 10s
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.error('⏰ ElevenLabs API request timeout (15s)');
+      console.error('⏰ ElevenLabs API request timeout (10s) - aborting request');
       controller.abort();
-    }, 15000); // 15 second timeout for faster feedback
+    }, 10000); // 10 second timeout to prevent serverless function timeout
     
     console.log('📤 Sending request to:', url);
     console.log('📦 Request body size:', JSON.stringify(requestBody).length, 'bytes');
