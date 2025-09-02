@@ -18,9 +18,9 @@ export function applyWST2Rules(text: string, config: VoiceConfig): string {
   let processed = text;
 
   // Apply WST2 rules in order
-  processed = applyBreakTagSystem(processed, config);
+  processed = applyBreakTagSystem(processed);
   processed = applyAllCapsEmphasis(processed, config);
-  processed = applyPunctuationSpaceLogic(processed, config);
+  processed = applyPunctuationSpaceLogic(processed);
 
   return processed;
 }
