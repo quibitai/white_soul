@@ -288,15 +288,40 @@ async function synthesizeChunks(
     // Synthesize if not cached
     if (!audioBuffer) {
       try {
+        console.log(`🎯 Starting synthesis for chunk ${i + 1}/${manifest.chunks.length}`);
+        console.log(`📝 SSML preview: ${chunk.ssml.slice(0, 200)}${chunk.ssml.length > 200 ? '...' : ''}`);
+        
+        // Check environment variables
+        const voiceId = process.env.ELEVEN_VOICE_ID;
+        const modelId = process.env.ELEVEN_MODEL_ID || 'eleven_multilingual_v2';
+        const apiKey = process.env.ELEVENLABS_API_KEY;
+        
+        console.log('🔧 Environment check:', {
+          hasVoiceId: !!voiceId,
+          hasApiKey: !!apiKey,
+          modelId,
+          voiceIdPreview: voiceId ? `${voiceId.slice(0, 8)}...` : 'MISSING'
+        });
+        
+        if (!voiceId) {
+          throw new Error('ELEVEN_VOICE_ID environment variable is not set');
+        }
+        
+        if (!apiKey) {
+          throw new Error('ELEVENLABS_API_KEY environment variable is not set');
+        }
+        
         audioBuffer = await synthesizeWithRetry(chunk.ssml, {
-          voiceId: process.env.ELEVEN_VOICE_ID!,
-          modelId: process.env.ELEVEN_MODEL_ID || 'eleven_multilingual_v2',
+          voiceId,
+          modelId,
           voiceSettings: settings.eleven,
           format: 'pcm', // Use PCM format for ElevenLabs compatibility
           seed: 12345, // Deterministic seed
           previousText: chunk.ix > 0 ? manifest.chunks[chunk.ix - 1].text.slice(-300) : undefined,
           nextText: chunk.ix < manifest.chunks.length - 1 ? manifest.chunks[chunk.ix + 1].text.slice(0, 300) : undefined,
         });
+        
+        console.log(`✅ Synthesis completed for chunk ${i + 1}, buffer size: ${audioBuffer.length} bytes`);
         
         // Cache the result with retry on failure
         try {

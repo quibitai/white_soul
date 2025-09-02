@@ -105,6 +105,9 @@ export async function synthesizeElevenLabs(
 
   try {
     console.log('🌐 Making ElevenLabs API request...');
+    console.log('🔑 API Key present:', !!process.env.ELEVENLABS_API_KEY);
+    console.log('🎤 Voice ID:', voiceId);
+    console.log('🤖 Model ID:', modelId);
     
     // Add timeout to prevent hanging
     const controller = new AbortController();
@@ -125,20 +128,25 @@ export async function synthesizeElevenLabs(
     });
     
     clearTimeout(timeoutId);
+    console.log(`📡 ElevenLabs API response: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}`;
       try {
         const errorData = await response.json();
+        console.error('❌ ElevenLabs API error details:', errorData);
         errorMessage = errorData.detail?.message || errorData.message || errorMessage;
       } catch {
         errorMessage = await response.text() || errorMessage;
+        console.error('❌ Could not parse error response from ElevenLabs API');
       }
       throw new Error(`ElevenLabs API error: ${errorMessage}`);
     }
 
+    console.log('📥 Processing audio response...');
     const arrayBuffer = await response.arrayBuffer();
     const audioBuffer = Buffer.from(arrayBuffer);
+    console.log(`🎵 Audio buffer received: ${audioBuffer.length} bytes`);
 
     if (audioBuffer.length === 0) {
       throw new Error('Received empty audio buffer from ElevenLabs');
