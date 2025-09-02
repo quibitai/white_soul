@@ -1,0 +1,17 @@
+{
+  "functions": {
+    "src/app/api/**/*.ts": {
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "FFMPEG_PATH": "/var/task/node_modules/ffmpeg-static/ffmpeg"
+  },
+  "build": {
+    "env": {
+      "NEXT_TELEMETRY_DISABLED": "1"
+    }
+  },
+  "regions": ["iad1"],
+  "framework": "nextjs"
+}

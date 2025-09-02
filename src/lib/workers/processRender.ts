@@ -18,38 +18,61 @@ import {
 } from '@/lib/utils/hash';
 import { synthesizeWithRetry } from '@/lib/tts/synthesis';
 import { acrossfadeJoin, masterAndEncode, analyzeAudio } from '@/lib/audio/ffmpeg';
+import { getBlobRetryConfig, getTimeoutConfig, logEnvironmentInfo } from '@/lib/config/vercel';
+import { cacheMonitor, logCachePerformance } from '@/lib/utils/cache-monitor';
 
 /**
  * Retry fetch with exponential backoff for blob availability
+ * Enhanced with better error handling and longer delays for Vercel Blob consistency
  */
-async function fetchWithRetry(url: string, maxRetries: number = 5): Promise<Response> {
+async function fetchWithRetry(url: string, maxRetries?: number): Promise<Response> {
+  const retryConfig = getBlobRetryConfig();
+  const actualMaxRetries = maxRetries ?? retryConfig.maxRetries;
+  
   let lastError: Error;
   console.log(`🔍 Attempting to fetch: ${url}`);
   
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
+  for (let attempt = 0; attempt < actualMaxRetries; attempt++) {
     try {
-      const response = await fetch(url);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      
       if (response.ok) {
         console.log(`✅ Blob fetch successful on attempt ${attempt + 1}`);
         return response;
       }
       
-      // If it's a 403/404, wait and retry (blob might not be available yet)
+      // If it's a 403/404, wait and retry (blob might not be available yet due to eventual consistency)
       if (response.status === 403 || response.status === 404) {
-        const delay = Math.min(1000 * Math.pow(2, attempt), 5000); // Exponential backoff, max 5s
-        console.log(`🔄 Blob not ready (${response.status}), retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries})`);
+        if (attempt === actualMaxRetries - 1) {
+          throw new Error(`Blob not found after ${actualMaxRetries} attempts: ${response.status} ${response.statusText}`);
+        }
+        
+        // Use environment-aware delays
+        const delay = Math.min(
+          retryConfig.initialDelay * Math.pow(retryConfig.backoffMultiplier, attempt),
+          retryConfig.maxDelay
+        );
+        console.log(`🔄 Blob not ready (${response.status}), retrying in ${delay}ms (attempt ${attempt + 1}/${actualMaxRetries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }
       
-      // Other errors, throw immediately
+      // Other HTTP errors, throw immediately
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     } catch (error) {
       lastError = error as Error;
-      if (attempt === maxRetries - 1) break;
       
+      // Don't retry on network errors for the last attempt
+      if (attempt === actualMaxRetries - 1) break;
+      
+      // Network errors get shorter delays
       const delay = Math.min(1000 * Math.pow(2, attempt), 5000);
-      console.log(`🔄 Fetch failed, retrying in ${delay}ms (attempt ${attempt + 1}/${maxRetries}):`, error);
+      console.log(`🔄 Network error, retrying in ${delay}ms (attempt ${attempt + 1}/${actualMaxRetries}):`, error);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
@@ -65,6 +88,9 @@ async function fetchWithRetry(url: string, maxRetries: number = 5): Promise<Resp
  */
 export async function processRender(renderId: string, manifest?: Manifest, settings?: TuningSettings): Promise<{ finalKey: string }> {
   console.log(`🔄 Processing render ${renderId}`);
+  
+  // Log environment info for debugging deployment issues
+  logEnvironmentInfo();
   
   try {
     // If manifest and settings are provided, use them directly to avoid blob read issues
@@ -200,6 +226,9 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     
     console.log(`✅ Render ${renderId} completed successfully`);
     
+    // Log cache performance summary
+    logCachePerformance(renderId);
+    
     return { finalKey };
     
   } catch (error) {
@@ -216,7 +245,7 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
 }
 
 /**
- * Synthesize all chunks with caching
+ * Synthesize all chunks with caching and improved error handling
  */
 async function synthesizeChunks(
   manifest: Manifest,
@@ -229,54 +258,90 @@ async function synthesizeChunks(
     const chunk = manifest.chunks[i];
     console.log(`🎙️ Processing chunk ${i + 1}/${manifest.chunks.length} (${chunk.hash.slice(0, 8)}...)`);
     
-    // Check cache first
+    // Check cache first with shorter retry for cache checks
     const cacheKey = generateChunkCacheKey(chunk.hash);
     let audioBuffer: Buffer | null = null;
     
     try {
       const cacheUrl = generateBlobUrl(cacheKey);
-      const response = await fetchWithRetry(cacheUrl, 2); // Quick check for cache
-      audioBuffer = Buffer.from(await response.arrayBuffer());
-      console.log(`💾 Cache hit for chunk ${i}`);
+      // Use a single quick attempt for cache checks to avoid delays
+      const response = await fetch(cacheUrl, {
+        method: 'HEAD', // Use HEAD request for faster cache checks
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      
+      if (response.ok) {
+        // If HEAD succeeds, fetch the actual content
+        const contentResponse = await fetch(cacheUrl);
+        if (contentResponse.ok) {
+          audioBuffer = Buffer.from(await contentResponse.arrayBuffer());
+          console.log(`💾 Cache hit for chunk ${i}`);
+          cacheMonitor.recordHit('chunks');
+        }
+      }
     } catch (error) {
+      // Quick fail for cache checks - don't retry
       console.log(`🔄 Cache miss for chunk ${i}, synthesizing...`);
+      cacheMonitor.recordMiss('chunks');
     }
     
     // Synthesize if not cached
     if (!audioBuffer) {
-      audioBuffer = await synthesizeWithRetry(chunk.ssml, {
-        voiceId: process.env.ELEVEN_VOICE_ID!,
-        modelId: process.env.ELEVEN_MODEL_ID || 'eleven_multilingual_v2',
-        voiceSettings: settings.eleven,
-        format: 'pcm', // Use PCM format for ElevenLabs compatibility
-        seed: 12345, // Deterministic seed
-        previousText: chunk.ix > 0 ? manifest.chunks[chunk.ix - 1].text.slice(-300) : undefined,
-        nextText: chunk.ix < manifest.chunks.length - 1 ? manifest.chunks[chunk.ix + 1].text.slice(0, 300) : undefined,
-      });
-      
-      // Cache the result
-      await put(cacheKey, audioBuffer, { access: 'public', allowOverwrite: true });
-      console.log(`💾 Cached chunk ${i}`);
+      try {
+        audioBuffer = await synthesizeWithRetry(chunk.ssml, {
+          voiceId: process.env.ELEVEN_VOICE_ID!,
+          modelId: process.env.ELEVEN_MODEL_ID || 'eleven_multilingual_v2',
+          voiceSettings: settings.eleven,
+          format: 'pcm', // Use PCM format for ElevenLabs compatibility
+          seed: 12345, // Deterministic seed
+          previousText: chunk.ix > 0 ? manifest.chunks[chunk.ix - 1].text.slice(-300) : undefined,
+          nextText: chunk.ix < manifest.chunks.length - 1 ? manifest.chunks[chunk.ix + 1].text.slice(0, 300) : undefined,
+        });
+        
+        // Cache the result with retry on failure
+        try {
+          await put(cacheKey, audioBuffer, { access: 'public', allowOverwrite: true });
+          console.log(`💾 Cached chunk ${i}`);
+          // Small delay to help with Vercel Blob eventual consistency
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch (cacheError) {
+          console.warn(`⚠️ Failed to cache chunk ${i}, continuing anyway:`, cacheError);
+          // Don't fail the entire process if caching fails
+        }
+      } catch (synthesisError) {
+        console.error(`❌ Failed to synthesize chunk ${i}:`, synthesisError);
+        throw new Error(`Synthesis failed for chunk ${i}: ${synthesisError}`);
+      }
     }
     
-    // Also save to render folder
-    const renderChunkPath = generateRenderChunkPath(renderId, chunk.ix, chunk.hash);
-    await put(renderChunkPath, audioBuffer, { access: 'public', allowOverwrite: true });
+    // Also save to render folder with error handling
+    try {
+      const renderChunkPath = generateRenderChunkPath(renderId, chunk.ix, chunk.hash);
+      await put(renderChunkPath, audioBuffer, { access: 'public', allowOverwrite: true });
+    } catch (renderSaveError) {
+      console.warn(`⚠️ Failed to save chunk ${i} to render folder:`, renderSaveError);
+      // Don't fail the process, but log the warning
+    }
     
     chunkBuffers.push(audioBuffer);
     
-    // Update progress
-    await updateStatus(renderId, {
-      progress: {
-        total: manifest.chunks.length,
-        done: i + 1,
-      },
-      steps: [
-        { name: 'ssml', ok: true },
-        { name: 'chunk', ok: true },
-        { name: 'synthesize', ok: false, done: i + 1, total: manifest.chunks.length },
-      ],
-    });
+    // Update progress with error handling
+    try {
+      await updateStatus(renderId, {
+        progress: {
+          total: manifest.chunks.length,
+          done: i + 1,
+        },
+        steps: [
+          { name: 'ssml', ok: true },
+          { name: 'chunk', ok: true },
+          { name: 'synthesize', ok: false, done: i + 1, total: manifest.chunks.length },
+        ],
+      });
+    } catch (statusError) {
+      console.warn(`⚠️ Failed to update status after chunk ${i}:`, statusError);
+      // Continue processing even if status update fails
+    }
   }
   
   return chunkBuffers;

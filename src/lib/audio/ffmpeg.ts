@@ -9,6 +9,7 @@ import { promises as fs } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { TuningSettings } from '@/lib/types/tuning';
+import { getFFmpegPaths, logEnvironmentInfo } from '@/lib/config/vercel';
 
 /**
  * Convert raw PCM data to WAV format with proper headers
@@ -54,42 +55,38 @@ function pcmToWav(
   return Buffer.concat([header, pcmBuffer]);
 }
 
-// Initialize FFmpeg path
+// Initialize FFmpeg path with environment-aware handling
 async function initFFmpeg() {
   try {
+    // Log environment info for debugging
+    logEnvironmentInfo();
+    
+    // Get prioritized paths for current environment
+    const pathsToTry = getFFmpegPaths();
+    
+    // Add the static path if available
     if (ffmpegPath) {
-      console.log('Setting FFmpeg path to:', ffmpegPath);
-      ffmpeg.setFfmpegPath(ffmpegPath);
-      
-      // Verify the path exists
-      try {
-        await fs.access(ffmpegPath);
-        console.log('FFmpeg binary verified at:', ffmpegPath);
-      } catch (accessError) {
-        console.warn('FFmpeg binary not accessible at:', ffmpegPath);
-        // Try alternative paths
-        const alternativePaths = [
-          '/usr/bin/ffmpeg',
-          '/usr/local/bin/ffmpeg',
-          process.cwd() + '/node_modules/ffmpeg-static/ffmpeg'
-        ];
-        
-        for (const altPath of alternativePaths) {
-          try {
-            await fs.access(altPath);
-            console.log('Using alternative FFmpeg path:', altPath);
-            ffmpeg.setFfmpegPath(altPath);
-            break;
-          } catch (e) {
-            // Continue to next path
-          }
-        }
-      }
-    } else {
-      console.warn('FFmpeg path not found, using system FFmpeg');
+      pathsToTry.unshift(ffmpegPath);
     }
+    
+    console.log('🔍 Searching for FFmpeg binary in paths:', pathsToTry);
+    
+    for (const path of pathsToTry) {
+      try {
+        await fs.access(path);
+        console.log('✅ Found FFmpeg binary at:', path);
+        ffmpeg.setFfmpegPath(path);
+        return; // Success, exit early
+      } catch {
+        // Continue to next path
+      }
+    }
+    
+    // If no paths work, log the attempted paths and use system FFmpeg
+    console.warn('⚠️ FFmpeg binary not found at any of these paths:', pathsToTry);
+    console.log('🔄 Falling back to system FFmpeg (may cause issues in serverless)');
   } catch (error) {
-    console.error('Failed to set FFmpeg path:', error);
+    console.error('❌ Failed to initialize FFmpeg:', error);
   }
 }
 
@@ -183,7 +180,7 @@ export async function acrossfadeJoin(
             reject(error);
           }
         })
-        .on('error', async (error) => {
+        .on('error', async (error: Error) => {
           console.error('FFmpeg crossfade error:', error);
           
           // Cleanup temporary files on error
@@ -286,7 +283,7 @@ export async function resampleAudio(
             reject(error);
           }
         })
-        .on('error', async (error) => {
+        .on('error', async (error: Error) => {
           // Cleanup temporary files on error
           try {
             await fs.unlink(inputFile);
@@ -380,7 +377,7 @@ export async function masterAndEncode(
             reject(error);
           }
         })
-        .on('error', async (error) => {
+        .on('error', async (error: Error) => {
           // Cleanup temporary files on error
           try {
             await fs.unlink(inputFile);
@@ -499,7 +496,7 @@ export async function encodeAudio(
             reject(error);
           }
         })
-        .on('error', async (error) => {
+        .on('error', async (error: Error) => {
           // Cleanup temporary files on error
           try {
             await fs.unlink(inputFile);
@@ -567,7 +564,7 @@ export async function analyzeAudio(audioBuffer: Buffer): Promise<{
             joinEnergySpikes: [], // TODO: Implement spike detection
           });
         })
-        .on('error', async (error) => {
+        .on('error', async (error: Error) => {
           // Cleanup temporary file on error
           try {
             await fs.unlink(inputFile);
