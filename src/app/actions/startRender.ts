@@ -190,17 +190,19 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
     
     console.log(`✅ Render ${renderId} initialized successfully`);
     
-    // Start processing asynchronously to avoid blocking the UI
+    // Start processing asynchronously via API call to avoid blocking the UI
     // This allows the UI to show progress immediately while processing continues
-    console.log('🚀 Starting processing with direct data...');
-    processRender(renderId, manifest, settings)
-      .then(() => {
-        console.log(`✅ Render ${renderId} processing completed`);
-      })
-      .catch((processError) => {
-        console.error(`❌ Processing failed for render ${renderId}:`, processError);
-        // Error will be reflected in status updates, UI will handle via polling
-      });
+    console.log('🚀 Starting processing via API call...');
+    
+    // Make async API call to start processing (fire-and-forget)
+    fetch('/api/process', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ renderId }),
+    }).catch((processError) => {
+      console.error(`❌ Failed to start processing for render ${renderId}:`, processError);
+      // Error will be reflected in status updates, UI will handle via polling
+    });
     
     return {
       renderId,
