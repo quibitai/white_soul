@@ -65,7 +65,7 @@ export async function acrossfadeJoin(
     // Write input files
     for (let i = 0; i < audioBuffers.length; i++) {
       const inputName = `input${i}.mp3`;
-      await ffmpeg.writeFile(inputName, await fetchFile(new Blob([audioBuffers[i]])));
+      await ffmpeg.writeFile(inputName, await fetchFile(new Blob([audioBuffers[i].buffer])));
     }
     
     // Build FFmpeg command for concatenation with crossfade
@@ -149,7 +149,7 @@ export async function masterAndEncode(
   
   try {
     // Write input file
-    await ffmpeg.writeFile('input.mp3', await fetchFile(new Blob([inputBuffer])));
+    await ffmpeg.writeFile('input.mp3', await fetchFile(new Blob([inputBuffer.buffer])));
     
     const filters: string[] = [];
     
@@ -234,7 +234,7 @@ export async function analyzeAudio(audioBuffer: Buffer): Promise<{
   
   try {
     // Write input file
-    await ffmpeg.writeFile('input.mp3', await fetchFile(new Blob([audioBuffer])));
+    await ffmpeg.writeFile('input.mp3', await fetchFile(new Blob([audioBuffer.buffer])));
     
     // Get basic info
     await ffmpeg.exec(['-i', 'input.mp3', '-f', 'null', '-']);
