@@ -12,6 +12,8 @@ import { processRender } from '@/lib/workers/processRender';
  */
 const ProcessRequestSchema = z.object({
   renderId: z.string().min(1, 'Render ID is required'),
+  manifest: z.any().optional(), // Optional manifest to avoid blob loading
+  settings: z.any().optional(), // Optional settings to avoid blob loading
 });
 
 /**
@@ -22,13 +24,13 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   console.log(`🌐 API ENTRY: /api/process POST called`);
   try {
     const body = await req.json();
-    console.log(`📦 Request body:`, body);
-    const { renderId } = ProcessRequestSchema.parse(body);
+    console.log(`📦 Request body:`, { renderId: body.renderId, hasManifest: !!body.manifest, hasSettings: !!body.settings });
+    const { renderId, manifest, settings } = ProcessRequestSchema.parse(body);
 
     console.log(`🚀 Processing render ${renderId}`);
 
-    // Process the render
-    const result = await processRender(renderId);
+    // Process the render with optional manifest and settings to avoid blob loading delays
+    const result = await processRender(renderId, manifest, settings);
 
     return NextResponse.json({
       success: true,

@@ -202,7 +202,11 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
     fetch(processUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ renderId }),
+      body: JSON.stringify({ 
+        renderId,
+        manifest,
+        settings 
+      }),
     }).catch((processError) => {
       console.error(`❌ Failed to start processing for render ${renderId}:`, processError);
       // Error will be reflected in status updates, UI will handle via polling

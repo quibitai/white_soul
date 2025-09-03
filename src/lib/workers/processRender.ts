@@ -103,9 +103,9 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
       finalManifest = manifest;
       finalSettings = settings;
     } else {
-      // Fallback to loading from blob storage with delay
-      console.log('⏳ Waiting 10 seconds for blob availability...');
-      await new Promise(resolve => setTimeout(resolve, 10000));
+      // Fallback to loading from blob storage with shorter delay
+      console.log('⏳ Waiting 2 seconds for blob availability...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       finalManifest = await loadManifest(renderId);
       finalSettings = await loadRenderSettings(renderId);
@@ -427,8 +427,8 @@ async function loadManifest(renderId: string): Promise<Manifest> {
     const manifestUrl = generateBlobUrl(generateRenderPath(renderId, 'manifest.json'));
     console.log(`🔍 Loading manifest from generated URL: ${manifestUrl}`);
     
-    // Retry with exponential backoff for newly created blobs
-    const response = await fetchBlobWithRetry(manifestUrl, 5);
+    // Retry with exponential backoff for newly created blobs (reduced retries for speed)
+    const response = await fetchBlobWithRetry(manifestUrl, 3);
     return await response.json();
   } catch (error) {
     console.error(`❌ Failed to load manifest:`, error);
@@ -444,8 +444,8 @@ async function loadRenderSettings(renderId: string): Promise<TuningSettings> {
     const requestUrl = generateBlobUrl(generateRenderPath(renderId, 'request.json'));
     console.log(`🔍 Loading settings from generated URL: ${requestUrl}`);
     
-    // Retry with exponential backoff for newly created blobs
-    const response = await fetchBlobWithRetry(requestUrl, 5);
+    // Retry with exponential backoff for newly created blobs (reduced retries for speed)
+    const response = await fetchBlobWithRetry(requestUrl, 3);
     const request = await response.json();
     return request.settings;
   } catch (error) {
