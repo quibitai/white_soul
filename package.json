@@ -10,6 +10,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@types/js-yaml": "^4.0.9",
     "@types/uuid": "^10.0.0",
     "@vercel/blob": "^1.1.1",

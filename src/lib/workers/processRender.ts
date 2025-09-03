@@ -17,7 +17,7 @@ import {
   generateBlobUrl,
 } from '@/lib/utils/hash';
 import { synthesizeWithRetry } from '@/lib/tts/synthesis';
-import { acrossfadeJoin, masterAndEncode, analyzeAudio } from '@/lib/audio/ffmpeg';
+import { acrossfadeJoin, masterAndEncode, analyzeAudio } from '@/lib/audio/ffmpeg-wasm';
 import { getBlobRetryConfig, logEnvironmentInfo } from '@/lib/config/vercel';
 import { cacheMonitor, logCachePerformance } from '@/lib/utils/cache-monitor';
 
@@ -107,24 +107,8 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
   const startTime = new Date();
   
   try {
-    // Early FFmpeg initialization check to catch issues before processing
-    console.log('🔧 Checking FFmpeg initialization before processing...');
-    try {
-      const ffmpegStaticPath = await import('ffmpeg-static');
-      const ffmpegPath = ffmpegStaticPath.default;
-      console.log('📍 FFmpeg static path:', ffmpegPath);
-      
-      if (ffmpegPath) {
-        const { promises: fs } = await import('fs');
-        await fs.access(ffmpegPath);
-        console.log('✅ FFmpeg binary is accessible at:', ffmpegPath);
-      } else {
-        console.warn('⚠️ FFmpeg static path not found, will try system FFmpeg');
-      }
-    } catch (ffmpegCheckError) {
-      console.error('💥 FFmpeg initialization check failed:', ffmpegCheckError);
-      console.error('🔍 This might be why FFmpeg operations are crashing with SIGSEGV');
-    }
+    // Using WebAssembly FFmpeg - no binary check needed
+    console.log('🔧 Using WebAssembly FFmpeg implementation for serverless compatibility');
     
     // If manifest and settings are provided, use them directly to avoid blob read issues
     let finalManifest: Manifest;
