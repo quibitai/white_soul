@@ -203,8 +203,8 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
         state: 'failed',
         progress: { total: 4, done: 2 },
         steps: [
-          { name: 'Synthesis', status: 'completed', duration: synthesisEndTime - synthesisStartTime },
-          { name: 'Stitching', status: 'failed', duration: Date.now() - stitchingStartTime, error: stitchError instanceof Error ? stitchError.message : 'FFmpeg stitching failed' }
+          { name: 'Synthesis', ok: true },
+          { name: 'Stitching', ok: false }
         ],
         startedAt: startTime.toISOString(),
         updatedAt: new Date().toISOString(),
@@ -264,9 +264,9 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
         state: 'failed',
         progress: { total: 4, done: 3 },
         steps: [
-          { name: 'Synthesis', status: 'completed', duration: synthesisEndTime - synthesisStartTime },
-          { name: 'Stitching', status: 'completed', duration: stitchingEndTime - stitchingStartTime },
-          { name: 'Mastering', status: 'failed', duration: Date.now() - masteringStartTime, error: masterError instanceof Error ? masterError.message : 'FFmpeg mastering failed' }
+          { name: 'Synthesis', ok: true },
+          { name: 'Stitching', ok: true },
+          { name: 'Mastering', ok: false }
         ],
         startedAt: startTime.toISOString(),
         updatedAt: new Date().toISOString(),
