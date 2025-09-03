@@ -167,6 +167,15 @@ export default function TercelPage() {
     }
   };
 
+  const resetSettings = () => {
+    setSettings(DEFAULT_TUNING_SETTINGS);
+  };
+
+  const savePreset = (name: string) => {
+    console.log(`Saving preset: ${name}`, settings);
+    // TODO: Implement preset saving functionality
+  };
+
   const getStatusIcon = (state: string) => {
     switch (state) {
       case 'queued': return <Clock size={20} className="text-yellow-400" />;
@@ -423,6 +432,8 @@ export default function TercelPage() {
                   <TuningPanel
                     settings={settings}
                     onChange={setSettings}
+                    onReset={resetSettings}
+                    onSavePreset={savePreset}
                   />
                 </div>
               )}
