@@ -122,8 +122,11 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     });
     
     // Step 1: Synthesize or reuse chunks
-    console.log(`🎙️ Synthesizing ${finalManifest.chunks.length} chunks...`);
+    console.log(`🎙️ Starting synthesis of ${finalManifest.chunks.length} chunks...`);
+    const synthesisStartTime = Date.now();
     const chunkBuffers = await synthesizeChunks(finalManifest, finalSettings, renderId);
+    const synthesisEndTime = Date.now();
+    console.log(`✅ All chunks synthesized in ${synthesisEndTime - synthesisStartTime}ms`);
     
     // Update status after synthesis
     await updateStatus(renderId, {
@@ -136,13 +139,16 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     });
     
     // Step 2: Stitch with crossfade
-    console.log('🔗 Stitching chunks with crossfade...');
+    console.log('🔗 Starting stitching chunks with crossfade...');
+    const stitchingStartTime = Date.now();
     const stitchedBuffer = await acrossfadeJoin(
       chunkBuffers,
       finalSettings.stitching.crossfadeMs,
       finalSettings.stitching.sampleRate,
       finalSettings.stitching.mono
     );
+    const stitchingEndTime = Date.now();
+    console.log(`✅ Stitching completed in ${stitchingEndTime - stitchingStartTime}ms, buffer size: ${stitchedBuffer.length} bytes`);
     
     // Save raw stitched audio
     const rawKey = generateRenderPath(renderId, 'raw.wav');
@@ -160,12 +166,15 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     });
     
     // Step 3: Master and encode
-    console.log('🎚️ Mastering and encoding final audio...');
+    console.log('🎚️ Starting mastering and encoding final audio...');
+    const masteringStartTime = Date.now();
     const finalBuffer = await masterAndEncode(stitchedBuffer, {
       ...finalSettings.mastering,
       format: finalSettings.export.format,
       bitrateKbps: finalSettings.export.bitrateKbps,
     });
+    const masteringEndTime = Date.now();
+    console.log(`✅ Mastering completed in ${masteringEndTime - masteringStartTime}ms, final buffer size: ${finalBuffer.length} bytes`);
     
     // Save final audio
     const extension = finalSettings.export.format;
@@ -328,7 +337,9 @@ async function synthesizeChunks(
           throw new Error('ELEVENLABS_API_KEY environment variable is not set');
         }
         
-        console.log('🚀 About to call synthesizeWithRetry...');
+        console.log(`🚀 About to call synthesizeWithRetry for chunk ${i + 1}/${manifest.chunks.length}...`);
+        console.log(`📝 SSML length: ${chunk.ssml.length} characters`);
+        console.log(`🎯 Chunk text preview: ${chunk.text.slice(0, 100)}...`);
         const startTime = Date.now();
         
         audioBuffer = await synthesizeWithRetry(chunk.ssml, {
@@ -342,9 +353,10 @@ async function synthesizeChunks(
         });
         
         const duration = Date.now() - startTime;
-        console.log(`⏱️ Synthesis took ${duration}ms`);
+        console.log(`⏱️ Synthesis took ${duration}ms for chunk ${i + 1}/${manifest.chunks.length}`);
         
         console.log(`✅ Synthesis completed for chunk ${i + 1}, buffer size: ${audioBuffer.length} bytes`);
+        console.log(`🎵 Audio buffer type: ${audioBuffer.constructor.name}`);
         
         // Cache the result with retry on failure
         try {

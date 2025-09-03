@@ -118,12 +118,12 @@ export async function synthesizeElevenLabs(
     console.log('🎤 Voice ID:', voiceId);
     console.log('🤖 Model ID:', modelId);
     
-    // Add aggressive timeout to prevent hanging - reduced to 10s
+    // Add timeout to prevent hanging - increased to 25s for Vercel's 30s limit
     const controller = new AbortController();
     const timeoutId = setTimeout(() => {
-      console.error('⏰ ElevenLabs API request timeout (10s) - aborting request');
+      console.error('⏰ ElevenLabs API request timeout (25s) - aborting request');
       controller.abort();
-    }, 10000); // 10 second timeout to prevent serverless function timeout
+    }, 25000); // 25 second timeout to stay within Vercel's 30s limit
     
     console.log('📤 Sending request to:', url);
     console.log('📦 Request body size:', JSON.stringify(requestBody).length, 'bytes');
