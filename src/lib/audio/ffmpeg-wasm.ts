@@ -5,7 +5,7 @@
 
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
-import { TuningSettings } from '@/lib/types/tuning';
+// WebAssembly FFmpeg implementation - no TuningSettings import needed
 
 let ffmpeg: FFmpeg | null = null;
 let isLoaded = false;
@@ -36,44 +36,8 @@ async function initializeFFmpeg(): Promise<FFmpeg> {
   return ffmpeg;
 }
 
-/**
- * Convert raw PCM data to WAV format with proper headers
- */
-function pcmToWav(
-  pcmBuffer: Buffer,
-  sampleRate: number = 44100,
-  channels: number = 1,
-  bitsPerSample: number = 16
-): Buffer {
-  const byteRate = sampleRate * channels * bitsPerSample / 8;
-  const blockAlign = channels * bitsPerSample / 8;
-  const dataSize = pcmBuffer.length;
-  const fileSize = 36 + dataSize;
-
-  const header = Buffer.alloc(44);
-  let offset = 0;
-
-  // RIFF header
-  header.write('RIFF', offset); offset += 4;
-  header.writeUInt32LE(fileSize, offset); offset += 4;
-  header.write('WAVE', offset); offset += 4;
-
-  // fmt chunk
-  header.write('fmt ', offset); offset += 4;
-  header.writeUInt32LE(16, offset); offset += 4;
-  header.writeUInt16LE(1, offset); offset += 2;
-  header.writeUInt16LE(channels, offset); offset += 2;
-  header.writeUInt32LE(sampleRate, offset); offset += 4;
-  header.writeUInt32LE(byteRate, offset); offset += 4;
-  header.writeUInt16LE(blockAlign, offset); offset += 2;
-  header.writeUInt16LE(bitsPerSample, offset); offset += 2;
-
-  // data chunk
-  header.write('data', offset); offset += 4;
-  header.writeUInt32LE(dataSize, offset);
-
-  return Buffer.concat([header, pcmBuffer]);
-}
+// PCM to WAV conversion not needed for WebAssembly FFmpeg implementation
+// The @ffmpeg/ffmpeg handles format conversions internally
 
 /**
  * Stitch audio chunks with crossfade using WebAssembly FFmpeg
@@ -187,7 +151,7 @@ export async function masterAndEncode(
     // Write input file
     await ffmpeg.writeFile('input.mp3', await fetchFile(new Blob([inputBuffer])));
     
-    let filters: string[] = [];
+    const filters: string[] = [];
     
     if (options.enable) {
       // High-pass filter
