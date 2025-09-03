@@ -198,6 +198,20 @@ export default function TercelPage() {
         }} />
       </div>
 
+      {/* Floating Tercel Car */}
+      <div className="fixed bottom-4 left-4 pointer-events-none z-40 animate-bounce">
+        <div className="relative">
+          <img 
+            src="/images/tercel.jpeg" 
+            alt="Floating Tercel" 
+            className="w-24 h-16 object-cover rounded-lg border border-cyan-400 shadow-lg opacity-80"
+          />
+          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-cyan-400 text-xs font-bold font-mono whitespace-nowrap">
+            TERCEL MODE
+          </div>
+        </div>
+      </div>
+
       {/* Back Button */}
       <div className="fixed top-4 left-4 z-50">
         <button
@@ -240,6 +254,74 @@ export default function TercelPage() {
             </div>
           </div>
         </header>
+
+        {/* Toyota Tercel Commercial Video */}
+        <div className="mb-12">
+          <div className="bg-black/70 border-2 border-pink-400 rounded-lg p-6 backdrop-blur-sm max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold text-pink-400 mb-4 font-mono text-center">
+              📺 ORIGINAL 1990 TOYOTA TERCEL COMMERCIAL
+            </h2>
+            <div className="relative aspect-video rounded-lg overflow-hidden border-2 border-cyan-400">
+              <iframe 
+                width="100%" 
+                height="100%" 
+                src="https://www.youtube.com/embed/TrtgzKfrEcc?si=q1ONK2RsC1-8j6gi" 
+                title="Toyota Tercel 1990 Commercial" 
+                frameBorder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                referrerPolicy="strict-origin-when-cross-origin" 
+                allowFullScreen
+                className="rounded-lg"
+              />
+            </div>
+            <p className="text-cyan-300 text-center mt-4 font-mono text-sm">
+              The inspiration behind our totally radical TTS engine!
+            </p>
+          </div>
+        </div>
+
+        {/* Tercel Images Gallery */}
+        <div className="mb-12">
+          <div className="bg-black/70 border-2 border-yellow-400 rounded-lg p-6 backdrop-blur-sm max-w-4xl mx-auto">
+            <h2 className="text-2xl font-bold text-yellow-400 mb-6 font-mono text-center">
+              🏁 TERCEL GALLERY
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="relative group">
+                <img 
+                  src="/images/tercel.jpeg" 
+                  alt="Toyota Tercel 1990" 
+                  className="w-full rounded-lg border-2 border-cyan-400 shadow-lg transform group-hover:scale-105 transition-all duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute bottom-4 left-4 text-cyan-400 font-bold font-mono">
+                    TERCEL DELUXE
+                  </div>
+                </div>
+              </div>
+              <div className="relative group">
+                <img 
+                  src="/images/tercel2.jpg" 
+                  alt="Toyota Tercel Advertisement" 
+                  className="w-full rounded-lg border-2 border-pink-400 shadow-lg transform group-hover:scale-105 transition-all duration-300"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                  <div className="absolute bottom-4 left-4 text-pink-400 font-bold font-mono">
+                    CLASSIC AD
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="text-center mt-6">
+              <div className="text-lg text-white font-bold italic">
+                "A perfect example is the 1990 Tercel."
+              </div>
+              <div className="text-cyan-300 text-sm font-mono mt-2">
+                Not only is the Tercel great-looking, it makes great sense too.
+              </div>
+            </div>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
           {/* Main Content */}

@@ -236,17 +236,25 @@ export default function V2Page() {
       <div className="fixed top-4 right-4 z-50">
         <button
           onClick={() => window.location.href = '/v2/tercel'}
-          className="group relative bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-4 py-2 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-300 font-bold text-sm border-2 border-red-800"
+          className="group relative bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white px-3 py-2 rounded-lg shadow-lg transform hover:scale-105 transition-all duration-300 font-bold text-sm border-2 border-red-800 overflow-hidden"
           title="Toyota Tercel Mode - I love what you do for me!"
         >
           <div className="flex items-center gap-2">
-            <div className="text-lg">🚗</div>
+            <div className="relative">
+              <img 
+                src="/images/tercel.jpeg" 
+                alt="Tercel" 
+                className="w-6 h-4 object-cover rounded border border-red-300 group-hover:border-yellow-400 transition-colors"
+              />
+            </div>
             <span className="hidden sm:inline">I love what you do for me</span>
             <span className="sm:hidden">Tercel</span>
           </div>
           <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-black text-xs px-1 rounded font-bold opacity-0 group-hover:opacity-100 transition-opacity">
             '90
           </div>
+          {/* Subtle glow effect */}
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
         </button>
       </div>
       
