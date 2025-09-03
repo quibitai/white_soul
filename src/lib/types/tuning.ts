@@ -100,6 +100,7 @@ export const RenderStatusSchema = z.object({
   startedAt: z.string(),
   updatedAt: z.string(),
   error: z.string().nullable(),
+  finalUrl: z.string().optional(),
 });
 
 export type RenderStatus = z.infer<typeof RenderStatusSchema>;
