@@ -108,11 +108,12 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     // Early FFmpeg initialization check to catch issues before processing
     console.log('🔧 Checking FFmpeg initialization before processing...');
     try {
-      const ffmpegPath = require('ffmpeg-static');
+      const ffmpegStaticPath = await import('ffmpeg-static');
+      const ffmpegPath = ffmpegStaticPath.default;
       console.log('📍 FFmpeg static path:', ffmpegPath);
       
       if (ffmpegPath) {
-        const fs = require('fs').promises;
+        const { promises: fs } = await import('fs');
         await fs.access(ffmpegPath);
         console.log('✅ FFmpeg binary is accessible at:', ffmpegPath);
       } else {
@@ -301,7 +302,12 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     // Step 4: Generate diagnostics
     console.log('📊 Analyzing final audio...');
     
-    let audioAnalysis: any;
+    let audioAnalysis: {
+      durationSec: number;
+      lufsIntegrated: number;
+      truePeakDb: number;
+      joinEnergySpikes: Array<{ posMs: number; db: number }>;
+    };
     try {
       console.log('🎯 About to call analyzeAudio - final FFmpeg operation');
       audioAnalysis = await analyzeAudio(finalBuffer);
