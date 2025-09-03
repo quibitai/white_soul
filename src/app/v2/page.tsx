@@ -345,6 +345,27 @@ export default function V2Page() {
         
         <button
           onClick={async () => {
+            try {
+              const response = await fetch('/api/env-check');
+              const result = await response.json();
+              console.log('Environment check:', result);
+              
+              const status = result.configured ? '✅ CONFIGURED' : '❌ MISSING CONFIG';
+              const details = `${status}\n\nRequired:\n- API Key: ${result.environment.elevenlabs.apiKey ? '✅' : '❌'}\n- Voice ID: ${result.environment.elevenlabs.voiceId ? '✅' : '❌'}\n\nModel: ${result.environment.elevenlabs.modelId}\nBypass Mode: ${result.environment.elevenlabs.bypassMode}`;
+              
+              alert(details);
+            } catch (error) {
+              console.error('Environment check error:', error);
+              alert('Environment check failed - check console');
+            }
+          }}
+          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-200"
+        >
+          Check Config
+        </button>
+        
+        <button
+          onClick={async () => {
             if (confirm('Enable bypass mode? This will use dummy audio instead of ElevenLabs.')) {
               try {
                 const response = await fetch('/api/set-bypass', { 
