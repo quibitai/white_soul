@@ -104,6 +104,8 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
   
   console.log(`🔄 Starting processRender main logic...`);
   
+  const startTime = new Date();
+  
   try {
     // Early FFmpeg initialization check to catch issues before processing
     console.log('🔧 Checking FFmpeg initialization before processing...');
