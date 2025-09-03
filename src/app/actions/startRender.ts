@@ -23,7 +23,6 @@ import {
   generateRenderPath,
   generateBlobUrl
 } from '@/lib/utils/hash';
-import { getAbsoluteApiUrl } from '@/lib/config/vercel';
 
 /**
  * Input schema for startRender action
@@ -195,31 +194,41 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
     // This allows the UI to show progress immediately while processing continues
     console.log('🚀 Starting processing via API call...');
     
-    // Make async API call to start processing (fire-and-forget)
-    const processUrl = getAbsoluteApiUrl('/api/process');
-    console.log(`🔗 Making API call to: ${processUrl}`);
+    // Start processing asynchronously using direct function call to avoid authentication issues
+    console.log(`🚀 Starting direct processing for render ${renderId}`);
     
-    fetch(processUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        renderId,
-        manifest,
-        settings 
-      }),
-    }).then(async (response) => {
-      console.log(`📡 API response status: ${response.status} ${response.statusText}`);
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ API call failed with ${response.status}:`, errorText);
-      } else {
-        const result = await response.json();
-        console.log(`✅ API call successful:`, result);
+    // Import and call processRender directly to avoid internal HTTP calls
+    (async () => {
+      try {
+        const { processRender } = await import('@/lib/workers/processRender');
+        console.log(`🔄 Calling processRender directly for ${renderId}`);
+        const result = await processRender(renderId, manifest, settings);
+        console.log(`✅ Direct processing completed for ${renderId}:`, result);
+      } catch (processError) {
+        console.error(`❌ Direct processing failed for render ${renderId}:`, processError);
+        
+        // Update status to failed
+        try {
+          const { put } = await import('@vercel/blob');
+          const errorStatus = {
+            state: 'failed' as const,
+            progress: { total: 0, done: 0 },
+            steps: [],
+            startedAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            error: processError instanceof Error ? processError.message : 'Processing failed',
+          };
+          
+          await put(
+            generateRenderPath(renderId, 'status.json'),
+            JSON.stringify(errorStatus, null, 2),
+            { access: 'public', allowOverwrite: true }
+          );
+        } catch (statusError) {
+          console.error(`Failed to update error status for ${renderId}:`, statusError);
+        }
       }
-    }).catch((processError) => {
-      console.error(`❌ Failed to start processing for render ${renderId}:`, processError);
-      // Error will be reflected in status updates, UI will handle via polling
-    });
+    })();
     
     return {
       renderId,
