@@ -73,6 +73,10 @@ export async function POST() {
           attackMs: 10,
           releaseMs: 100,
           gainDb: 0
+        },
+        loudness: {
+          targetLUFS: -14,
+          truePeakDb: -1.0
         }
       },
       export: {
