@@ -89,9 +89,20 @@ async function fetchBlobWithRetry(url: string, maxRetries?: number): Promise<Res
 export async function processRender(renderId: string, manifest?: Manifest, settings?: TuningSettings): Promise<{ finalKey: string }> {
   console.log(`🔄 Processing render ${renderId}`);
   console.log(`🚀 FUNCTION ENTRY: processRender called with renderId=${renderId}`);
+  console.log(`📊 Function parameters:`, {
+    renderId,
+    hasManifest: !!manifest,
+    hasSettings: !!settings,
+    manifestChunks: manifest?.chunks?.length || 'N/A',
+    timestamp: new Date().toISOString()
+  });
   
   // Log environment info for debugging deployment issues
+  console.log(`🌍 Logging environment info...`);
   logEnvironmentInfo();
+  console.log(`✅ Environment info logged`);
+  
+  console.log(`🔄 Starting processRender main logic...`);
   
   try {
     // If manifest and settings are provided, use them directly to avoid blob read issues

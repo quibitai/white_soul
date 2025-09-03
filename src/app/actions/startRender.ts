@@ -200,15 +200,24 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
     // Import and call processRender directly to avoid internal HTTP calls
     (async () => {
       try {
+        console.log(`🔄 Starting dynamic import for processRender (${renderId})`);
         const { processRender } = await import('@/lib/workers/processRender');
-        console.log(`🔄 Calling processRender directly for ${renderId}`);
-        const result = await processRender(renderId, manifest, settings);
-        console.log(`✅ Direct processing completed for ${renderId}:`, result);
-      } catch (processError) {
-        console.error(`❌ Direct processing failed for render ${renderId}:`, processError);
+        console.log(`✅ Dynamic import successful, calling processRender for ${renderId}`);
+        console.log(`📋 Manifest chunks: ${manifest.chunks.length}, Settings: ${JSON.stringify(settings).slice(0, 100)}...`);
         
-        // Update status to failed
+        const result = await processRender(renderId, manifest, settings);
+        console.log(`🎉 Direct processing completed successfully for ${renderId}:`, result);
+      } catch (processError) {
+        console.error(`💥 Direct processing failed for render ${renderId}:`, processError);
+        console.error(`🔍 Error details:`, {
+          name: processError instanceof Error ? processError.name : 'Unknown',
+          message: processError instanceof Error ? processError.message : String(processError),
+          stack: processError instanceof Error ? processError.stack : 'No stack trace'
+        });
+        
+        // Update status to failed with detailed error info
         try {
+          console.log(`🔄 Updating status to failed for ${renderId}`);
           const { put } = await import('@vercel/blob');
           const errorStatus = {
             state: 'failed' as const,
@@ -224,8 +233,9 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
             JSON.stringify(errorStatus, null, 2),
             { access: 'public', allowOverwrite: true }
           );
+          console.log(`✅ Error status updated for ${renderId}`);
         } catch (statusError) {
-          console.error(`Failed to update error status for ${renderId}:`, statusError);
+          console.error(`💥 Failed to update error status for ${renderId}:`, statusError);
         }
       }
     })();

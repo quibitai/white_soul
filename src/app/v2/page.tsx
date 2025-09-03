@@ -387,6 +387,27 @@ export default function V2Page() {
         
         <button
           onClick={async () => {
+            try {
+              const response = await fetch('/api/test-render', { method: 'POST' });
+              const result = await response.json();
+              console.log('Render test result:', result);
+              
+              const status = result.success ? '✅ WORKING' : '❌ FAILED';
+              const message = `Render Function Test: ${status}\n\n${result.success ? 'processRender function is working!' : `Error: ${result.error}\nDetails: ${result.details}`}`;
+              
+              alert(message);
+            } catch (error) {
+              console.error('Render test error:', error);
+              alert('Render test failed - check console');
+            }
+          }}
+          className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-all duration-200"
+        >
+          Test Render
+        </button>
+        
+        <button
+          onClick={async () => {
             if (confirm('Enable bypass mode? This will use dummy audio instead of ElevenLabs.')) {
               try {
                 const response = await fetch('/api/set-bypass', { 
