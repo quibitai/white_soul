@@ -2,9 +2,9 @@
  * Simple test endpoint to verify ElevenLabs API connectivity
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     console.log('🧪 Testing ElevenLabs API connectivity...');
     

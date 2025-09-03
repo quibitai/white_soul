@@ -6,6 +6,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { 
   Download, 
   Settings, 
@@ -241,17 +242,19 @@ export default function V2Page() {
         >
           <div className="flex items-center gap-2">
             <div className="relative">
-              <img 
+              <Image 
                 src="/images/tercel.jpeg" 
                 alt="Tercel" 
-                className="w-6 h-4 object-cover rounded border border-red-300 group-hover:border-yellow-400 transition-colors"
+                width={24}
+                height={16}
+                className="object-cover rounded border border-red-300 group-hover:border-yellow-400 transition-colors"
               />
             </div>
             <span className="hidden sm:inline">I love what you do for me</span>
             <span className="sm:hidden">Tercel</span>
           </div>
           <div className="absolute -bottom-1 -right-1 bg-yellow-400 text-black text-xs px-1 rounded font-bold opacity-0 group-hover:opacity-100 transition-opacity">
-            '90
+            &apos;90
           </div>
           {/* Subtle glow effect */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-400/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

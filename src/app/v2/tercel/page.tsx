@@ -14,7 +14,6 @@ import {
   CheckCircle,
   Clock,
   Zap,
-  BarChart3,
   ArrowLeft,
 } from 'lucide-react';
 import TuningPanel from '@/components/TuningPanel';
@@ -42,7 +41,7 @@ export default function TercelPage() {
   const [currentJob, setCurrentJob] = useState<RenderJob | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [editedSSML, setEditedSSML] = useState<string | null>(null);
+
 
   // Poll for status updates (same logic as main page)
   useEffect(() => {
@@ -93,7 +92,7 @@ export default function TercelPage() {
     }, 2000);
 
     return () => clearInterval(pollInterval);
-  }, [currentJob?.renderId, currentJob?.status.state]);
+  }, [currentJob]);
 
   const handleGenerate = async () => {
     if (!script.trim()) {
@@ -233,23 +232,23 @@ export default function TercelPage() {
               WHITE SOUL TERCEL
             </h1>
             <div className="text-2xl text-cyan-300 mb-4 font-bold italic">
-              "When it comes to TTS, it's beautiful."
+              &ldquo;When it comes to TTS, it&apos;s beautiful.&rdquo;
             </div>
           </div>
           
           <div className="bg-black/50 border-2 border-cyan-400 rounded-lg p-6 max-w-4xl mx-auto backdrop-blur-sm">
             <p className="text-lg text-white mb-4 leading-relaxed">
               Most people subscribe to the theory that the better a TTS engine looks, the more it costs. 
-              Thankfully, <span className="text-cyan-400 font-bold">White Soul</span> doesn't.
+              Thankfully, <span className="text-cyan-400 font-bold">White Soul</span> doesn&apos;t.
             </p>
             <p className="text-sm text-cyan-200 leading-relaxed">
               A perfect example is the 1990 Tercel TTS. Not only is the Tercel great-sounding, it makes 
-              great sense too. In addition to being White Soul's lowest-priced engine, Tercel offers a 
-              <span className="text-pink-400 font-bold">12-valve powertrain</span> that is among White Soul's most 
+              great sense too. In addition to being White Soul&apos;s lowest-priced engine, Tercel offers a 
+              <span className="text-pink-400 font-bold">12-valve powertrain</span> that is among White Soul&apos;s most 
               economical and <span className="text-yellow-400 font-bold">fuel-efficient*</span> engines.
             </p>
             <div className="text-2xl text-pink-400 font-bold italic mt-6">
-              "White Soul, I love what you do for me"
+              &ldquo;White Soul, I love what you do for me&rdquo;
             </div>
           </div>
         </header>
