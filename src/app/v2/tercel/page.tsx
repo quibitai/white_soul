@@ -179,7 +179,18 @@ export default function TercelPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-900 via-red-800 to-orange-900 relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden">
+      {/* Tercel Background Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+        style={{
+          backgroundImage: `url('/images/tercel.jpeg')`,
+        }}
+      />
+      
+      {/* Dark overlay for readability */}
+      <div className="absolute inset-0 bg-black/60" />
+      
       {/* 80s Grid Background */}
       <div className="absolute inset-0 opacity-20">
         <div className="absolute inset-0" style={{
@@ -198,19 +209,7 @@ export default function TercelPage() {
         }} />
       </div>
 
-      {/* Floating Tercel Car */}
-      <div className="fixed bottom-4 left-4 pointer-events-none z-40 animate-bounce">
-        <div className="relative">
-          <img 
-            src="/images/tercel.jpeg" 
-            alt="Floating Tercel" 
-            className="w-24 h-16 object-cover rounded-lg border border-cyan-400 shadow-lg opacity-80"
-          />
-          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 text-cyan-400 text-xs font-bold font-mono whitespace-nowrap">
-            TERCEL MODE
-          </div>
-        </div>
-      </div>
+
 
       {/* Back Button */}
       <div className="fixed top-4 left-4 z-50">
@@ -255,73 +254,7 @@ export default function TercelPage() {
           </div>
         </header>
 
-        {/* Toyota Tercel Commercial Video */}
-        <div className="mb-12">
-          <div className="bg-black/70 border-2 border-pink-400 rounded-lg p-6 backdrop-blur-sm max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold text-pink-400 mb-4 font-mono text-center">
-              📺 ORIGINAL 1990 TOYOTA TERCEL COMMERCIAL
-            </h2>
-            <div className="relative aspect-video rounded-lg overflow-hidden border-2 border-cyan-400">
-              <iframe 
-                width="100%" 
-                height="100%" 
-                src="https://www.youtube.com/embed/TrtgzKfrEcc?si=q1ONK2RsC1-8j6gi" 
-                title="Toyota Tercel 1990 Commercial" 
-                frameBorder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                referrerPolicy="strict-origin-when-cross-origin" 
-                allowFullScreen
-                className="rounded-lg"
-              />
-            </div>
-            <p className="text-cyan-300 text-center mt-4 font-mono text-sm">
-              The inspiration behind our totally radical TTS engine!
-            </p>
-          </div>
-        </div>
 
-        {/* Tercel Images Gallery */}
-        <div className="mb-12">
-          <div className="bg-black/70 border-2 border-yellow-400 rounded-lg p-6 backdrop-blur-sm max-w-4xl mx-auto">
-            <h2 className="text-2xl font-bold text-yellow-400 mb-6 font-mono text-center">
-              🏁 TERCEL GALLERY
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="relative group">
-                <img 
-                  src="/images/tercel.jpeg" 
-                  alt="Toyota Tercel 1990" 
-                  className="w-full rounded-lg border-2 border-cyan-400 shadow-lg transform group-hover:scale-105 transition-all duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="absolute bottom-4 left-4 text-cyan-400 font-bold font-mono">
-                    TERCEL DELUXE
-                  </div>
-                </div>
-              </div>
-              <div className="relative group">
-                <img 
-                  src="/images/tercel2.jpg" 
-                  alt="Toyota Tercel Advertisement" 
-                  className="w-full rounded-lg border-2 border-pink-400 shadow-lg transform group-hover:scale-105 transition-all duration-300"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div className="absolute bottom-4 left-4 text-pink-400 font-bold font-mono">
-                    CLASSIC AD
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="text-center mt-6">
-              <div className="text-lg text-white font-bold italic">
-                "A perfect example is the 1990 Tercel."
-              </div>
-              <div className="text-cyan-300 text-sm font-mono mt-2">
-                Not only is the Tercel great-looking, it makes great sense too.
-              </div>
-            </div>
-          </div>
-        </div>
 
         <div className="grid grid-cols-1 xl:grid-cols-5 gap-8">
           {/* Main Content */}
@@ -473,21 +406,21 @@ export default function TercelPage() {
 
           {/* Tuning Panel - Retro Style */}
           <div className="xl:col-span-2">
-            <div className="bg-black/70 border-2 border-purple-400 rounded-lg p-6 backdrop-blur-sm">
+            <div className="bg-black/80 border-2 border-purple-400 rounded-lg p-6 backdrop-blur-sm shadow-lg shadow-purple-400/20">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-purple-400 font-mono">
+                <h3 className="text-xl font-bold text-purple-400 font-mono tracking-wider">
                   ⚙️ TUNING MATRIX
                 </h3>
                 <button
                   onClick={() => setShowTuning(!showTuning)}
-                  className="text-purple-300 hover:text-purple-100 transition-colors"
+                  className="text-purple-300 hover:text-purple-100 transition-colors p-2 rounded border border-purple-500 hover:border-purple-300"
                 >
                   <Settings size={20} />
                 </button>
               </div>
               
               {showTuning && (
-                <div className="retro-tuning-panel">
+                <div className="retro-tuning-panel space-y-4">
                   <TuningPanel
                     settings={settings}
                     onChange={setSettings}
@@ -513,22 +446,76 @@ export default function TercelPage() {
       {/* Custom CSS for retro styling */}
       <style jsx global>{`
         .retro-tuning-panel {
-          filter: hue-rotate(180deg) saturate(1.5);
+          font-family: 'Courier New', monospace;
         }
         
         .retro-tuning-panel input,
         .retro-tuning-panel select,
         .retro-tuning-panel textarea {
-          background: rgba(0, 255, 255, 0.1) !important;
-          border: 1px solid cyan !important;
-          color: cyan !important;
+          background: rgba(0, 0, 0, 0.8) !important;
+          border: 2px solid #a855f7 !important;
+          color: #e879f9 !important;
           font-family: 'Courier New', monospace !important;
+          border-radius: 6px !important;
+          padding: 8px 12px !important;
+          font-weight: bold !important;
+          text-transform: uppercase !important;
+          letter-spacing: 1px !important;
+        }
+        
+        .retro-tuning-panel input:focus,
+        .retro-tuning-panel select:focus,
+        .retro-tuning-panel textarea:focus {
+          border-color: #06b6d4 !important;
+          box-shadow: 0 0 10px rgba(6, 182, 212, 0.5) !important;
+          outline: none !important;
         }
         
         .retro-tuning-panel label {
-          color: #ff00ff !important;
+          color: #a855f7 !important;
           font-family: 'Courier New', monospace !important;
           font-weight: bold !important;
+          text-transform: uppercase !important;
+          letter-spacing: 1px !important;
+          font-size: 12px !important;
+        }
+        
+        .retro-tuning-panel button {
+          background: linear-gradient(to right, #7c3aed, #a855f7) !important;
+          border: 2px solid #c084fc !important;
+          color: white !important;
+          font-family: 'Courier New', monospace !important;
+          font-weight: bold !important;
+          text-transform: uppercase !important;
+          letter-spacing: 1px !important;
+          border-radius: 6px !important;
+          padding: 8px 16px !important;
+          transition: all 0.3s ease !important;
+        }
+        
+        .retro-tuning-panel button:hover {
+          background: linear-gradient(to right, #8b5cf6, #c084fc) !important;
+          border-color: #e879f9 !important;
+          box-shadow: 0 0 15px rgba(232, 121, 249, 0.5) !important;
+          transform: scale(1.05) !important;
+        }
+        
+        .retro-tuning-panel .bg-white {
+          background: rgba(0, 0, 0, 0.9) !important;
+          border: 2px solid #a855f7 !important;
+          border-radius: 8px !important;
+        }
+        
+        .retro-tuning-panel .text-gray-900 {
+          color: #e879f9 !important;
+        }
+        
+        .retro-tuning-panel .text-gray-600 {
+          color: #c084fc !important;
+        }
+        
+        .retro-tuning-panel .border-gray-300 {
+          border-color: #a855f7 !important;
         }
       `}</style>
     </div>
