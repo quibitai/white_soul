@@ -207,6 +207,15 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
         manifest,
         settings 
       }),
+    }).then(async (response) => {
+      console.log(`📡 API response status: ${response.status} ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`❌ API call failed with ${response.status}:`, errorText);
+      } else {
+        const result = await response.json();
+        console.log(`✅ API call successful:`, result);
+      }
     }).catch((processError) => {
       console.error(`❌ Failed to start processing for render ${renderId}:`, processError);
       // Error will be reflected in status updates, UI will handle via polling

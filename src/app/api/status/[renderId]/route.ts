@@ -16,6 +16,7 @@ export async function GET(
 ): Promise<NextResponse> {
   try {
     const { renderId } = await params;
+    console.log(`📊 Status check requested for render: ${renderId}`);
 
     if (!renderId) {
       return NextResponse.json(
@@ -26,6 +27,7 @@ export async function GET(
 
     // Get status from blob storage
     const statusUrl = generateBlobUrl(generateRenderPath(renderId, 'status.json'));
+    console.log(`🔍 Checking status at: ${statusUrl}`);
     
     try {
       const response = await fetch(statusUrl);
