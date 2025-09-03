@@ -61,6 +61,9 @@ export interface StartRenderResult {
  * @returns Render job information
  */
 export async function startRender(input: StartRenderInput): Promise<StartRenderResult> {
+  console.log(`🎬 startRender function called at ${new Date().toISOString()}`);
+  console.log(`📝 Input received:`, { scriptLength: input.rawScript?.length || 0, hasSettings: !!input.settings });
+  
   // Validate input
   const { rawScript, settings } = StartRenderInputSchema.parse(input);
   
@@ -196,15 +199,31 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
     
     // Start processing asynchronously using direct function call to avoid authentication issues
     console.log(`🚀 Starting direct processing for render ${renderId}`);
+    console.log(`🌍 Current environment: NODE_ENV=${process.env.NODE_ENV}, VERCEL=${process.env.VERCEL}`);
+    console.log(`⏰ Timestamp: ${new Date().toISOString()}`);
     
     // Import and call processRender directly to avoid internal HTTP calls
     (async () => {
       try {
         console.log(`🔄 Starting dynamic import for processRender (${renderId})`);
-        const { processRender } = await import('@/lib/workers/processRender');
-        console.log(`✅ Dynamic import successful, calling processRender for ${renderId}`);
-        console.log(`📋 Manifest chunks: ${manifest.chunks.length}, Settings: ${JSON.stringify(settings).slice(0, 100)}...`);
+        console.log(`📂 Import path: @/lib/workers/processRender`);
         
+        const moduleImport = await import('@/lib/workers/processRender');
+        console.log(`✅ Dynamic import successful, module keys:`, Object.keys(moduleImport));
+        
+        const { processRender } = moduleImport;
+        console.log(`🔍 processRender function type:`, typeof processRender);
+        
+        if (!processRender) {
+          throw new Error('processRender function not found in imported module');
+        }
+        
+        console.log(`📋 About to call processRender with:`);
+        console.log(`  - renderId: ${renderId}`);
+        console.log(`  - manifest chunks: ${manifest.chunks.length}`);
+        console.log(`  - settings preview: ${JSON.stringify(settings).slice(0, 100)}...`);
+        
+        console.log(`🎯 CALLING processRender NOW for ${renderId}`);
         const result = await processRender(renderId, manifest, settings);
         console.log(`🎉 Direct processing completed successfully for ${renderId}:`, result);
       } catch (processError) {
