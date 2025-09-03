@@ -18,38 +18,62 @@ export async function POST() {
     const testManifest = {
       scriptHash: 'test-hash',
       settingsHash: 'test-settings-hash',
+      chunking: {
+        maxSec: 35,
+        overlapMs: 500,
+        contextSentences: 2
+      },
       chunks: [
         {
           ix: 0,
-          hash: 'test-chunk-hash',
           text: 'Hello world test',
           ssml: '<speak>Hello world test</speak>',
-          estSeconds: 2.0
+          hash: 'test-chunk-hash',
+          blob: 'test-blob-key'
         }
-      ],
-      metadata: {
-        totalChunks: 1,
-        totalDuration: 2.0,
-        avgChunkSize: 15
-      }
+      ]
     };
     
     const testSettings = {
       eleven: {
         stability: 0.5,
-        similarity_boost: 0.5,
+        similarityBoost: 0.5,
         style: 0.0,
-        use_speaker_boost: true
+        speakerBoost: true
+      },
+      ssml: {
+        tagDensityMaxPer10Words: 2,
+        breakMs: {
+          comma: 200,
+          clause: 300,
+          sentence: 500,
+          paragraph: 800
+        },
+        defaultRate: 1.0,
+        defaultPitchSt: 0,
+        enableIntimateBlock: false
+      },
+      chunking: {
+        maxSec: 35,
+        overlapMs: 500,
+        contextSentences: 2
       },
       stitching: {
         crossfadeMs: 100,
-        sampleRate: 44100,
+        sampleRate: 44100 as const,
         mono: false
       },
       mastering: {
-        normalize: true,
-        compressor: true,
-        limiter: true
+        enable: true,
+        highpassHz: 80,
+        deesserHz: 6000,
+        deesserAmount: 0.3,
+        compressor: {
+          ratio: 3,
+          attackMs: 10,
+          releaseMs: 100,
+          gainDb: 0
+        }
       },
       export: {
         format: 'mp3' as const,
