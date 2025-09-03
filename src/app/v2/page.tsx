@@ -366,6 +366,27 @@ export default function V2Page() {
         
         <button
           onClick={async () => {
+            try {
+              const response = await fetch('/api/test-process', { method: 'POST' });
+              const result = await response.json();
+              console.log('Process test result:', result);
+              
+              const status = result.success ? '✅ WORKING' : '❌ FAILED';
+              const message = `API Process Test: ${status}\n\n${result.success ? 'Internal API calls are working!' : `Error: ${result.error}\nDetails: ${result.details}`}`;
+              
+              alert(message);
+            } catch (error) {
+              console.error('Process test error:', error);
+              alert('Process test failed - check console');
+            }
+          }}
+          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-semibold rounded-lg transition-all duration-200"
+        >
+          Test Process
+        </button>
+        
+        <button
+          onClick={async () => {
             if (confirm('Enable bypass mode? This will use dummy audio instead of ElevenLabs.')) {
               try {
                 const response = await fetch('/api/set-bypass', { 
