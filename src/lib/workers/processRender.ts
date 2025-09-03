@@ -139,8 +139,38 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     
     // Step 1: Synthesize or reuse chunks
     console.log(`🎙️ Starting synthesis of ${finalManifest.chunks.length} chunks...`);
+    console.log(`🔄 About to call synthesizeChunks function...`);
+    
     const synthesisStartTime = Date.now();
-    const chunkBuffers = await synthesizeChunks(finalManifest, finalSettings, renderId);
+    
+    let chunkBuffers: Buffer[];
+    try {
+      console.log(`🎯 CALLING synthesizeChunks NOW for ${finalManifest.chunks.length} chunks`);
+      chunkBuffers = await synthesizeChunks(finalManifest, finalSettings, renderId);
+      console.log(`✅ synthesizeChunks completed successfully, got ${chunkBuffers.length} buffers`);
+    } catch (synthesisError) {
+      console.error('💥 synthesizeChunks failed:', synthesisError);
+      console.error('🔍 Synthesis error details:', {
+        name: synthesisError instanceof Error ? synthesisError.name : 'Unknown',
+        message: synthesisError instanceof Error ? synthesisError.message : String(synthesisError),
+        stack: synthesisError instanceof Error ? synthesisError.stack : 'No stack trace'
+      });
+      
+      // Update status to failed
+      await updateStatus(renderId, {
+        state: 'failed',
+        steps: [
+          { name: 'ssml', ok: true },
+          { name: 'chunk', ok: true },
+          { name: 'synthesize', ok: false }
+        ],
+        startedAt: startTime.toISOString(),
+        updatedAt: new Date().toISOString(),
+        error: `Synthesis failed: ${synthesisError instanceof Error ? synthesisError.message : 'Unknown error'}`
+      });
+      
+      throw new Error(`Synthesis failed: ${synthesisError instanceof Error ? synthesisError.message : 'Unknown error'}`);
+    }
     const synthesisEndTime = Date.now();
     console.log(`✅ All chunks synthesized in ${synthesisEndTime - synthesisStartTime}ms`);
     
@@ -377,11 +407,24 @@ async function synthesizeChunks(
   settings: TuningSettings,
   renderId: string
 ): Promise<Buffer[]> {
+  console.log(`🚀 ENTERED synthesizeChunks function with ${manifest.chunks.length} chunks`);
+  console.log(`📊 Synthesis parameters:`, {
+    chunkCount: manifest.chunks.length,
+    renderId: renderId.slice(0, 8) + '...',
+    timestamp: new Date().toISOString()
+  });
+  
   const chunkBuffers: Buffer[] = [];
   
   for (let i = 0; i < manifest.chunks.length; i++) {
     const chunk = manifest.chunks[i];
     console.log(`🎙️ Processing chunk ${i + 1}/${manifest.chunks.length} (${chunk.hash.slice(0, 8)}...)`);
+    console.log(`📝 Chunk details:`, {
+      index: i,
+      textLength: chunk.text.length,
+      ssmlLength: chunk.ssml.length,
+      hash: chunk.hash.slice(0, 12)
+    });
     
     // Update status to show current chunk progress
     await updateStatus(renderId, {
