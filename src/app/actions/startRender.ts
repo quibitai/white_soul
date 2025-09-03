@@ -23,6 +23,7 @@ import {
   generateRenderPath,
   generateBlobUrl
 } from '@/lib/utils/hash';
+import { getAbsoluteApiUrl } from '@/lib/config/vercel';
 
 /**
  * Input schema for startRender action
@@ -195,7 +196,10 @@ export async function startRender(input: StartRenderInput): Promise<StartRenderR
     console.log('🚀 Starting processing via API call...');
     
     // Make async API call to start processing (fire-and-forget)
-    fetch('/api/process', {
+    const processUrl = getAbsoluteApiUrl('/api/process');
+    console.log(`🔗 Making API call to: ${processUrl}`);
+    
+    fetch(processUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ renderId }),
