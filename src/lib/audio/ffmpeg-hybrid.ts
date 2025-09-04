@@ -12,24 +12,23 @@ import { join } from 'path';
 let ffmpegAvailable = false;
 let ffmpegPath: string | null = null;
 
+/**
+ * Initialize FFmpeg with Vercel-optimized fallback strategy
+ * Prioritizes reliability and performance for serverless environments
+ */
 async function initializeFFmpeg(): Promise<boolean> {
   if (ffmpegAvailable) return true;
+
+  const isVercel = process.env.VERCEL === '1';
+  const isProduction = process.env.NODE_ENV === 'production';
   
-  // Tier 1: Try system FFmpeg first (most reliable for local dev)
-  try {
-    ffmpeg.setFfmpegPath('ffmpeg');
-    ffmpegPath = 'ffmpeg';
-    ffmpegAvailable = true;
-    console.log('✅ FFmpeg initialized with system binary');
-    return true;
-  } catch (error) {
-    console.log('⚠️ System FFmpeg not available:', error instanceof Error ? error.message : 'Unknown error');
-  }
-  
-  // Tier 2: Try ffmpeg-static (works in most environments)
+  console.log(`🔧 Initializing FFmpeg (Vercel: ${isVercel}, Production: ${isProduction})`);
+
+  // Tier 1: ffmpeg-static (most reliable for serverless)
   try {
     const ffmpegStatic = await import('ffmpeg-static');
     if (ffmpegStatic.default) {
+      // Verify the binary exists and is accessible
       await fs.access(ffmpegStatic.default);
       ffmpeg.setFfmpegPath(ffmpegStatic.default);
       ffmpegPath = ffmpegStatic.default;
@@ -40,11 +39,21 @@ async function initializeFFmpeg(): Promise<boolean> {
   } catch (error) {
     console.log('⚠️ ffmpeg-static not available:', error instanceof Error ? error.message : 'Unknown error');
   }
-  
-  // Note: For Vercel deployment, we'll rely on ffmpeg-static or system FFmpeg
-  // @ffmpeg-installer/ffmpeg has Next.js compatibility issues
-  
-  console.log('❌ No FFmpeg available - will use fallback implementations');
+
+  // Tier 2: System FFmpeg (fallback for local development)
+  if (!isVercel) {
+    try {
+      ffmpeg.setFfmpegPath('ffmpeg');
+      ffmpegPath = 'ffmpeg';
+      ffmpegAvailable = true;
+      console.log('✅ FFmpeg initialized with system binary (local dev)');
+      return true;
+    } catch (error) {
+      console.log('⚠️ System FFmpeg not available:', error instanceof Error ? error.message : 'Unknown error');
+    }
+  }
+
+  console.log('❌ No FFmpeg available - audio processing will be disabled');
   return false;
 }
 
@@ -202,41 +211,56 @@ export async function masterAndEncode(
     await fs.mkdir(tempDir, { recursive: true });
     
     try {
-      const inputPath = join(tempDir, 'input.mp3');
+      // ElevenLabs returns PCM audio, not MP3 - use .pcm extension and specify format
+      const inputPath = join(tempDir, 'input.pcm');
       const outputPath = join(tempDir, `output.${options.format}`);
       
       // Write input file
       await fs.writeFile(inputPath, inputBuffer);
       console.log(`📁 Input file written: ${inputPath} (${inputBuffer.length} bytes)`);
+      console.log(`🔧 Input format: PCM 44100Hz (ElevenLabs format)`);
       
       // Build audio filters
       const filters: string[] = [];
       
       if (options.enable) {
-        // High-pass filter
+        console.log(`🎛️ Applying audio mastering filters...`);
+        
+        // High-pass filter to remove low-frequency noise
         if (options.highpassHz > 0) {
           filters.push(`highpass=f=${options.highpassHz}`);
+          console.log(`🔊 High-pass filter: ${options.highpassHz}Hz`);
         }
         
-        // De-esser (dynamic EQ)
+        // De-esser (reduce harsh sibilant sounds)
         if (options.deesserAmount > 0) {
-          const deesserGain = -options.deesserAmount * 10;
+          const deesserGain = -options.deesserAmount * 10; // Convert 0.5 to -5dB
           filters.push(`equalizer=f=${options.deesserHz}:width_type=h:width=1000:g=${deesserGain}`);
+          console.log(`🎤 De-esser: ${options.deesserHz}Hz, ${deesserGain}dB`);
         }
         
-        // Compressor
+        // Dynamic range compression
         const { ratio, attackMs, releaseMs, gainDb } = options.compressor;
         const attackSec = attackMs / 1000;
         const releaseSec = releaseMs / 1000;
         filters.push(`acompressor=ratio=${ratio}:attack=${attackSec}:release=${releaseSec}:makeup=${gainDb}`);
+        console.log(`🗜️ Compressor: ${ratio}:1 ratio, ${attackMs}ms attack, ${releaseMs}ms release, +${gainDb}dB makeup`);
         
-        // Loudness normalization
+        // Loudness normalization (single-pass for simplicity)
+        // Note: Single-pass loudnorm is less accurate but works in serverless environments
         filters.push(`loudnorm=I=${options.loudness.targetLUFS}:TP=${options.loudness.truePeakDb}:LRA=7`);
+        console.log(`📊 Loudness normalization: ${options.loudness.targetLUFS} LUFS, ${options.loudness.truePeakDb}dB peak`);
       }
       
       // Execute FFmpeg
       await new Promise<void>((resolve, reject) => {
-        const command = ffmpeg(inputPath);
+        // Configure input as raw PCM audio from ElevenLabs
+        const command = ffmpeg(inputPath)
+          .inputFormat('s16le')  // 16-bit signed little-endian PCM
+          .inputOptions([
+            '-ar', '44100',      // Sample rate: 44.1kHz
+            '-ac', '1'           // Channels: 1 (mono)
+          ]);
         
         console.log(`🔧 FFmpeg command setup:`, {
           inputPath,
@@ -270,28 +294,46 @@ export async function masterAndEncode(
           console.log(`🎵 WAV encoding: codec=pcm_s16le`);
         }
         
+        // Set timeout for Vercel serverless functions (25s max, leave 5s buffer)
+        const timeoutMs = process.env.VERCEL === '1' ? 20000 : 30000;
+        const timeout = setTimeout(() => {
+          command.kill('SIGKILL');
+          reject(new Error(`FFmpeg timeout after ${timeoutMs}ms`));
+        }, timeoutMs);
+
         command
           .output(outputPath)
           .on('start', (commandLine) => {
             console.log(`🚀 FFmpeg command started: ${commandLine}`);
+            console.log(`⏰ Timeout set to ${timeoutMs}ms`);
           })
           .on('progress', (progress) => {
-            console.log(`⏳ FFmpeg progress: ${progress.percent}% done, time: ${progress.timemark}`);
+            // Throttle progress logging to reduce noise
+            if (progress.percent && progress.percent % 25 === 0) {
+              console.log(`⏳ FFmpeg progress: ${progress.percent}% done, time: ${progress.timemark}`);
+            }
           })
           .on('end', () => {
+            clearTimeout(timeout);
             console.log(`✅ FFmpeg mastering command completed successfully`);
             resolve();
           })
           .on('error', (err) => {
+            clearTimeout(timeout);
             console.error(`💥 FFmpeg mastering command failed:`, err);
             reject(err);
           })
           .run();
       });
       
-      // Read output
+      // Read output and validate
       const outputBuffer = await fs.readFile(outputPath);
       console.log(`✅ FFmpeg mastering completed, output size: ${outputBuffer.length} bytes`);
+      
+      // Validate output size (should be reasonable for audio)
+      if (outputBuffer.length < 1000) {
+        throw new Error(`FFmpeg output suspiciously small: ${outputBuffer.length} bytes`);
+      }
       
       return outputBuffer;
       
