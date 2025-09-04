@@ -2,12 +2,10 @@
   "functions": {
     "src/app/api/**/*.ts": {
       "maxDuration": 300,
-      "runtime": "nodejs",
       "memory": 1024
     },
     "src/app/actions/**/*.ts": {
       "maxDuration": 300,
-      "runtime": "nodejs", 
       "memory": 1024
     }
   },
