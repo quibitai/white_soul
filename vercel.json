@@ -1,10 +1,10 @@
 {
   "functions": {
-    "src/app/api/**/*.ts": {
+    "src/app/actions/startRender.ts": {
       "maxDuration": 300,
       "memory": 1024
     },
-    "src/app/actions/**/*.ts": {
+    "src/app/api/status/[renderId]/route.ts": {
       "maxDuration": 300,
       "memory": 1024
     }

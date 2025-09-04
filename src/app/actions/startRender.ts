@@ -5,10 +5,6 @@
 
 'use server';
 
-// Vercel function configuration for long-running synthesis
-export const maxDuration = 300; // 5 minutes for ElevenLabs API calls
-export const dynamic = 'force-dynamic';
-
 import { put } from '@vercel/blob';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
