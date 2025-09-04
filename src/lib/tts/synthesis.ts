@@ -8,6 +8,7 @@ import { TuningSettings } from '@/lib/types/tuning';
 import { cleanSSMLForSynthesis, validateSSMLForSynthesis } from '@/lib/styling/ssml';
 import { elevenLabsFetch, elevenLabsAgent, createElevenLabsTimeout, logNetworkConfig } from './http';
 import { Readable } from 'node:stream';
+import type { Response } from 'undici';
 
 /**
  * Options for ElevenLabs synthesis
