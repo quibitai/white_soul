@@ -1,9 +1,11 @@
 /**
  * Process render worker for dev_plan_02 architecture
  * Handles synthesis, caching, stitching, and mastering
+ * Uses p-limit for concurrency control to prevent rate limiting
  */
 
 import { put, list } from '@vercel/blob';
+import pLimit from 'p-limit';
 import { 
   type Manifest, 
   type RenderStatus, 
@@ -87,22 +89,7 @@ async function fetchBlobWithRetry(url: string, maxRetries?: number): Promise<Res
  * @returns Final audio blob key
  */
 export async function processRender(renderId: string, manifest?: Manifest, settings?: TuningSettings): Promise<{ finalKey: string }> {
-  console.log(`🔄 Processing render ${renderId}`);
-  console.log(`🚀 FUNCTION ENTRY: processRender called with renderId=${renderId}`);
-  console.log(`📊 Function parameters:`, {
-    renderId,
-    hasManifest: !!manifest,
-    hasSettings: !!settings,
-    manifestChunks: manifest?.chunks?.length || 'N/A',
-    timestamp: new Date().toISOString()
-  });
-  
-  // Log environment info for debugging deployment issues
-  console.log(`🌍 Logging environment info...`);
-  logEnvironmentInfo();
-  console.log(`✅ Environment info logged`);
-  
-  console.log(`🔄 Starting processRender main logic...`);
+  console.log(`🚀 Processing render ${renderId} with ${manifest?.chunks?.length || 0} chunks`);
   
   const startTime = new Date();
   
@@ -137,24 +124,15 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
       ],
     });
     
-    // Step 1: Synthesize or reuse chunks
+    // Step 1: Synthesize chunks
     console.log(`🎙️ Starting synthesis of ${finalManifest.chunks.length} chunks...`);
-    console.log(`🔄 About to call synthesizeChunks function...`);
-    
-    const synthesisStartTime = Date.now();
     
     let chunkBuffers: Buffer[];
     try {
-      console.log(`🎯 CALLING synthesizeChunks NOW for ${finalManifest.chunks.length} chunks`);
       chunkBuffers = await synthesizeChunks(finalManifest, finalSettings, renderId);
-      console.log(`✅ synthesizeChunks completed successfully, got ${chunkBuffers.length} buffers`);
+      console.log(`✅ Synthesis completed: ${chunkBuffers.length} buffers`);
     } catch (synthesisError) {
-      console.error('💥 synthesizeChunks failed:', synthesisError);
-      console.error('🔍 Synthesis error details:', {
-        name: synthesisError instanceof Error ? synthesisError.name : 'Unknown',
-        message: synthesisError instanceof Error ? synthesisError.message : String(synthesisError),
-        stack: synthesisError instanceof Error ? synthesisError.stack : 'No stack trace'
-      });
+      console.error('❌ Synthesis failed:', synthesisError);
       
       // Update status to failed
       await updateStatus(renderId, {
@@ -407,186 +385,95 @@ async function synthesizeChunks(
   settings: TuningSettings,
   renderId: string
 ): Promise<Buffer[]> {
-  console.log(`🚀 ENTERED synthesizeChunks function with ${manifest.chunks.length} chunks`);
-  console.log(`📊 Synthesis parameters:`, {
-    chunkCount: manifest.chunks.length,
-    renderId: renderId.slice(0, 8) + '...',
-    timestamp: new Date().toISOString()
-  });
+  console.log(`🎙️ Synthesizing ${manifest.chunks.length} chunks with concurrency control`);
   
-  const chunkBuffers: Buffer[] = [];
+  // Limit concurrent ElevenLabs API calls to prevent rate limiting
+  const limit = pLimit(3); // Maximum 3 concurrent requests
+  console.log('🚦 Using p-limit with concurrency of 3 for ElevenLabs API calls');
   
-  for (let i = 0; i < manifest.chunks.length; i++) {
-    const chunk = manifest.chunks[i];
-            console.log(`🎙️ Processing chunk ${i + 1}/${manifest.chunks.length} (${chunk.hash.slice(0, 8)}...)`);
-        console.log(`📝 Chunk details:`, {
-          index: i,
-          textLength: chunk.text.length,
-          ssmlLength: chunk.ssml.length,
-          hash: chunk.hash.slice(0, 12)
-        });
-        console.log(`📝 Chunk text preview: "${chunk.text.slice(0, 100)}${chunk.text.length > 100 ? '...' : ''}"`);
-        console.log(`📝 Chunk SSML preview: "${chunk.ssml.slice(0, 150)}${chunk.ssml.length > 150 ? '...' : ''}"`);
-        
-    
-    // Update status to show current chunk progress
-    await updateStatus(renderId, {
-      state: 'running',
-      progress: {
-        total: manifest.chunks.length,
-        done: i,
-      },
-      steps: [
-        { name: 'ssml', ok: true },
-        { name: 'chunk', ok: true },
-        { name: 'synthesize', ok: false, done: i, total: manifest.chunks.length },
-      ],
-    });
-    
-    // Check cache first with shorter retry for cache checks
-    const cacheKey = generateChunkCacheKey(chunk.hash);
-    let audioBuffer: Buffer | null = null;
-    
-    try {
-      const cacheUrl = generateBlobUrl(cacheKey);
-      // Use a single quick attempt for cache checks to avoid delays
-      const response = await fetch(cacheUrl, {
-        method: 'HEAD', // Use HEAD request for faster cache checks
-        headers: { 'Cache-Control': 'no-cache' },
-      });
+  // Create promises for all chunks with concurrency control
+  const chunkPromises = manifest.chunks.map((chunk, i) => 
+    limit(async (): Promise<Buffer> => {
+      console.log(`🎙️ Processing chunk ${i + 1}/${manifest.chunks.length} (${chunk.hash.slice(0, 8)}...)`);
       
-      if (response.ok) {
-        // If HEAD succeeds, fetch the actual content
-        const contentResponse = await fetch(cacheUrl);
-        if (contentResponse.ok) {
-          audioBuffer = Buffer.from(await contentResponse.arrayBuffer());
-          console.log(`💾 Cache hit for chunk ${i}`);
-          console.log(`📊 Cached audio details:`, {
-            bufferSize: audioBuffer.length,
-            bufferType: audioBuffer.constructor.name,
-            firstBytes: Array.from(audioBuffer.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' ')
-          });
-          
-          // Validate the cached audio is not empty or corrupted
-          if (audioBuffer.length < 1000) {
-            console.log(`⚠️ Cached audio suspiciously small (${audioBuffer.length} bytes), may be corrupted`);
-          }
-          
-          cacheMonitor.recordHit('chunks');
-        }
-      }
-    } catch {
-      // Quick fail for cache checks - don't retry
-      console.log(`🔄 Cache miss for chunk ${i}, synthesizing...`);
-      cacheMonitor.recordMiss('chunks');
-    }
-    
-    // Synthesize if not cached
-    if (!audioBuffer) {
+      // Check cache first
+      const cacheKey = generateChunkCacheKey(chunk.hash);
+      let audioBuffer: Buffer | null = null;
+      
       try {
+        const cacheUrl = generateBlobUrl(cacheKey);
+        const response = await fetch(cacheUrl, {
+          method: 'HEAD',
+          headers: { 'Cache-Control': 'no-cache' },
+        });
+        
+        if (response.ok) {
+          const contentResponse = await fetch(cacheUrl);
+          if (contentResponse.ok) {
+            audioBuffer = Buffer.from(await contentResponse.arrayBuffer());
+            console.log(`💾 Cache hit for chunk ${i + 1}`);
+            cacheMonitor.recordHit('chunks');
+          }
+        }
+      } catch {
+        console.log(`🔄 Cache miss for chunk ${i + 1}, synthesizing...`);
+        cacheMonitor.recordMiss('chunks');
+      }
+      
+      // Synthesize if not cached
+      if (!audioBuffer) {
         console.log(`🎯 Starting synthesis for chunk ${i + 1}/${manifest.chunks.length}`);
-        console.log(`📝 SSML preview: ${chunk.ssml.slice(0, 200)}${chunk.ssml.length > 200 ? '...' : ''}`);
         
-        // Check for emergency bypass mode
-        if (process.env.BYPASS_ELEVENLABS === 'true') {
-          console.log('🚨 BYPASS MODE: Skipping ElevenLabs synthesis, using dummy audio');
-          // Create a dummy audio buffer (1 second of silence at 44.1kHz, 16-bit, mono)
-          audioBuffer = Buffer.alloc(44100 * 2); // 2 bytes per sample for 16-bit
-          console.log(`🔇 Generated dummy audio buffer: ${audioBuffer.length} bytes`);
-        } else {
-          // Check environment variables
-          const voiceId = process.env.ELEVEN_VOICE_ID;
-          const modelId = process.env.ELEVEN_MODEL_ID || 'eleven_multilingual_v2';
-          const apiKey = process.env.ELEVENLABS_API_KEY;
-          
-          console.log('🔧 Environment check:', {
-            hasVoiceId: !!voiceId,
-            hasApiKey: !!apiKey,
-            modelId,
-            voiceIdPreview: voiceId ? `${voiceId.slice(0, 8)}...` : 'MISSING'
-          });
+        // Check environment variables
+        const voiceId = process.env.ELEVEN_VOICE_ID;
+        const modelId = process.env.ELEVEN_MODEL_ID || 'eleven_multilingual_v2';
+        const apiKey = process.env.ELEVENLABS_API_KEY;
         
-        if (!voiceId) {
-          throw new Error('ELEVEN_VOICE_ID environment variable is not set');
+        if (!voiceId || !apiKey) {
+          throw new Error('ElevenLabs environment variables not set');
         }
         
-        if (!apiKey) {
-          throw new Error('ELEVENLABS_API_KEY environment variable is not set');
-        }
-        
-        console.log(`🚀 About to call synthesizeWithRetry for chunk ${i + 1}/${manifest.chunks.length}...`);
-        console.log(`📝 SSML length: ${chunk.ssml.length} characters`);
-        console.log(`🎯 Chunk text preview: ${chunk.text.slice(0, 100)}...`);
         const startTime = Date.now();
+        audioBuffer = await synthesizeWithRetry(chunk.ssml, {
+          voiceId,
+          modelId,
+          voiceSettings: settings.eleven,
+          format: 'pcm',
+          seed: 12345,
+          previousText: chunk.ix > 0 ? manifest.chunks[chunk.ix - 1].text.slice(-300) : undefined,
+          nextText: chunk.ix < manifest.chunks.length - 1 ? manifest.chunks[chunk.ix + 1].text.slice(0, 300) : undefined,
+        });
         
-          audioBuffer = await synthesizeWithRetry(chunk.ssml, {
-            voiceId: voiceId || 'dummy',
-            modelId,
-            voiceSettings: settings.eleven,
-            format: 'pcm', // Use PCM format for ElevenLabs compatibility
-            seed: 12345, // Deterministic seed
-            previousText: chunk.ix > 0 ? manifest.chunks[chunk.ix - 1].text.slice(-300) : undefined,
-            nextText: chunk.ix < manifest.chunks.length - 1 ? manifest.chunks[chunk.ix + 1].text.slice(0, 300) : undefined,
-          });
-          
-          const duration = Date.now() - startTime;
-          console.log(`⏱️ Synthesis took ${duration}ms for chunk ${i + 1}/${manifest.chunks.length}`);
-          
-          console.log(`✅ Synthesis completed for chunk ${i + 1}, buffer size: ${audioBuffer.length} bytes`);
-          console.log(`🎵 Audio buffer type: ${audioBuffer.constructor.name}`);
-        } // End of bypass mode else block
+        const duration = Date.now() - startTime;
+        console.log(`⏱️ Synthesis took ${duration}ms for chunk ${i + 1}`);
         
-        // Cache the result with retry on failure
+        // Cache the result
         try {
           await put(cacheKey, audioBuffer, { access: 'public', allowOverwrite: true });
-          console.log(`💾 Cached chunk ${i}`);
-          // Small delay to help with Vercel Blob eventual consistency
-          await new Promise(resolve => setTimeout(resolve, 100));
+          console.log(`💾 Cached chunk ${i + 1}`);
         } catch (cacheError) {
-          console.warn(`⚠️ Failed to cache chunk ${i}, continuing anyway:`, cacheError);
-          // Don't fail the entire process if caching fails
+          console.warn(`⚠️ Failed to cache chunk ${i + 1}:`, cacheError);
         }
-      } catch (synthesisError) {
-        console.error(`❌ Failed to synthesize chunk ${i}:`, synthesisError);
-        throw new Error(`Synthesis failed for chunk ${i}: ${synthesisError}`);
       }
-    }
-    
-    // Also save to render folder with error handling
-    try {
-      const renderChunkPath = generateRenderChunkPath(renderId, chunk.ix, chunk.hash);
-      await put(renderChunkPath, audioBuffer, { access: 'public', allowOverwrite: true });
-    } catch (renderSaveError) {
-      console.warn(`⚠️ Failed to save chunk ${i} to render folder:`, renderSaveError);
-      // Don't fail the process, but log the warning
-    }
-    
-    console.log(`✅ Adding chunk ${i} to buffer array:`, {
-      chunkIndex: i,
-      bufferSize: audioBuffer.length,
-      totalChunksProcessed: chunkBuffers.length + 1
-    });
-    chunkBuffers.push(audioBuffer);
-    
-    // Update progress with error handling
-    try {
-      await updateStatus(renderId, {
-        progress: {
-          total: manifest.chunks.length,
-          done: i + 1,
-        },
-        steps: [
-          { name: 'ssml', ok: true },
-          { name: 'chunk', ok: true },
-          { name: 'synthesize', ok: false, done: i + 1, total: manifest.chunks.length },
-        ],
-      });
-    } catch (statusError) {
-      console.warn(`⚠️ Failed to update status after chunk ${i}:`, statusError);
-      // Continue processing even if status update fails
-    }
-  }
+      
+      // Save to render folder
+      try {
+        const renderChunkPath = generateRenderChunkPath(renderId, chunk.ix, chunk.hash);
+        await put(renderChunkPath, audioBuffer, { access: 'public', allowOverwrite: true });
+      } catch (renderSaveError) {
+        console.warn(`⚠️ Failed to save chunk ${i + 1} to render folder:`, renderSaveError);
+      }
+      
+      console.log(`✅ Completed chunk ${i + 1}, buffer size: ${audioBuffer.length} bytes`);
+      return audioBuffer;
+    })
+  );
   
+  // Wait for all chunks to complete
+  console.log('⏳ Waiting for all chunks to complete with p-limit concurrency control...');
+  const chunkBuffers = await Promise.all(chunkPromises);
+  
+  console.log(`✅ All ${chunkBuffers.length} chunks completed successfully`);
   return chunkBuffers;
 }
 

@@ -1,11 +1,19 @@
 {
   "functions": {
     "src/app/api/**/*.ts": {
-      "maxDuration": 30
+      "maxDuration": 300,
+      "runtime": "nodejs",
+      "memory": 1024
+    },
+    "src/app/actions/**/*.ts": {
+      "maxDuration": 300,
+      "runtime": "nodejs", 
+      "memory": 1024
     }
   },
   "env": {
-    "FFMPEG_PATH": "/var/task/node_modules/ffmpeg-static/ffmpeg"
+    "FFMPEG_PATH": "/var/task/node_modules/ffmpeg-static/ffmpeg",
+    "NODE_OPTIONS": "--dns-result-order=ipv4first"
   },
   "build": {
     "env": {

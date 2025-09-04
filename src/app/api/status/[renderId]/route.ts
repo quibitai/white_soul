@@ -3,6 +3,11 @@
  * Returns current status and progress for a render job
  */
 
+// Vercel function configuration
+export const runtime = 'nodejs';
+export const maxDuration = 300;
+export const dynamic = 'force-dynamic';
+
 import { NextRequest, NextResponse } from 'next/server';
 import { generateRenderPath, generateBlobUrl } from '@/lib/utils/hash';
 

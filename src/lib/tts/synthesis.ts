@@ -1,10 +1,13 @@
 /**
  * Enhanced ElevenLabs synthesis for dev_plan_02 architecture
  * Provides single chunk synthesis with proper error handling and retry logic
+ * Uses undici for robust HTTP client with serverless optimization
  */
 
 import { TuningSettings } from '@/lib/types/tuning';
 import { cleanSSMLForSynthesis, validateSSMLForSynthesis } from '@/lib/styling/ssml';
+import { elevenLabsFetch, elevenLabsAgent, createElevenLabsTimeout, logNetworkConfig } from './http';
+import { Readable } from 'node:stream';
 
 /**
  * Options for ElevenLabs synthesis
@@ -29,15 +32,6 @@ export async function synthesizeElevenLabs(
   ssmlContent: string,
   options: SynthesisOptions
 ): Promise<Buffer> {
-  // TEMPORARY: Add emergency bypass for debugging
-  const BYPASS_ELEVENLABS = process.env.BYPASS_ELEVENLABS === 'true';
-  
-  if (BYPASS_ELEVENLABS) {
-    console.log('🚨 BYPASS MODE: Returning dummy audio buffer instead of calling ElevenLabs');
-    // Return a small dummy audio buffer (1 second of silence)
-    const dummyBuffer = Buffer.alloc(44100 * 2); // 1 second of 16-bit stereo silence
-    return dummyBuffer;
-  }
   if (!ssmlContent?.trim()) {
     throw new Error('SSML content is required');
   }
@@ -118,42 +112,38 @@ export async function synthesizeElevenLabs(
     console.log('🎤 Voice ID:', voiceId);
     console.log('🤖 Model ID:', modelId);
     
-    // Aggressive timeout for Vercel serverless functions
-    const controller = new AbortController();
-    const timeoutMs = process.env.VERCEL === '1' ? 10000 : 25000; // Very short timeout on Vercel
-    const timeoutId = setTimeout(() => {
-      console.error(`⏰ ElevenLabs API request timeout (${timeoutMs}ms) - aborting request`);
-      controller.abort();
-    }, timeoutMs);
+    // Log network configuration for debugging
+    logNetworkConfig();
+    
+    // Create timeout signal optimized for environment
+    const timeoutSignal = createElevenLabsTimeout();
     
     console.log('📤 Sending request to:', url);
     console.log('📦 Request body size:', JSON.stringify(requestBody).length, 'bytes');
-    console.log(`⏰ Timeout set to ${timeoutMs}ms`);
+    console.log('🌐 Using undici with custom dispatcher for robust networking');
     
     let response: Response;
     try {
-      console.log('🚀 Starting fetch request...');
-      response = await fetch(url, {
+      console.log('🚀 Starting undici request with custom agent...');
+      response = await elevenLabsFetch(url, {
         method: 'POST',
         headers: {
-          'xi-api-key': process.env.ELEVENLABS_API_KEY,
+          'xi-api-key': process.env.ELEVENLABS_API_KEY!,
           'Content-Type': 'application/json',
           'Accept': format === 'wav' ? 'audio/wav' : 'audio/mpeg',
         },
         body: JSON.stringify(requestBody),
-        signal: controller.signal,
+        dispatcher: elevenLabsAgent,
+        signal: timeoutSignal,
       });
-      console.log('📨 Fetch completed, processing response...');
+      console.log('📨 Undici request completed, processing response...');
     } catch (fetchError) {
-      clearTimeout(timeoutId);
-      console.error('💥 Fetch request failed:', fetchError);
+      console.error('💥 Undici request failed:', fetchError);
       if (fetchError instanceof Error && fetchError.name === 'AbortError') {
-        throw new Error(`ElevenLabs API request timed out after ${timeoutMs}ms`);
+        throw new Error(`ElevenLabs API request timed out - check network connectivity`);
       }
       throw fetchError;
     }
-    
-    clearTimeout(timeoutId);
     console.log(`📡 ElevenLabs API response: ${response.status} ${response.statusText}`);
 
     if (!response.ok) {
@@ -169,10 +159,22 @@ export async function synthesizeElevenLabs(
       throw new Error(`ElevenLabs API error: ${errorMessage}`);
     }
 
-    console.log('📥 Processing audio response...');
-    const arrayBuffer = await response.arrayBuffer();
-    const audioBuffer = Buffer.from(arrayBuffer);
-    console.log(`🎵 Audio buffer received: ${audioBuffer.length} bytes`);
+    console.log('📥 Streaming audio response directly to buffer...');
+    
+    if (!response.body) {
+      throw new Error('Received empty response body from ElevenLabs');
+    }
+
+    // Stream response directly to buffer for memory efficiency
+    const nodeStream = Readable.fromWeb(response.body as any);
+    const chunks: Buffer[] = [];
+    
+    for await (const chunk of nodeStream) {
+      chunks.push(Buffer.from(chunk));
+    }
+    
+    const audioBuffer = Buffer.concat(chunks);
+    console.log(`🎵 Audio buffer streamed: ${audioBuffer.length} bytes`);
 
     if (audioBuffer.length === 0) {
       throw new Error('Received empty audio buffer from ElevenLabs');
@@ -212,80 +214,26 @@ export async function synthesizeElevenLabs(
 export async function synthesizeWithRetry(
   ssmlContent: string,
   options: SynthesisOptions,
-  maxRetries: number = 1
+  maxRetries: number = 2
 ): Promise<Buffer> {
-  let lastError: Error | null = null;
+  console.log(`🔄 Starting synthesis with undici built-in retry logic`);
   
-  // Increase retries on Vercel due to network instability
-  const actualMaxRetries = process.env.VERCEL === '1' ? Math.max(maxRetries, 2) : maxRetries;
-  console.log(`🔄 Starting synthesis with ${actualMaxRetries} max retries (Vercel: ${process.env.VERCEL === '1'})`);
-
-  for (let attempt = 0; attempt <= actualMaxRetries; attempt++) {
-    try {
-      // Add jitter to voice settings on retry
-      const jitteredOptions = attempt > 0 ? addVoiceJitter(options) : options;
-      
-      if (attempt > 0) {
-        console.log(`🔄 Retry attempt ${attempt}/${actualMaxRetries} with jitter`);
-        // Shorter delays on Vercel to stay within function timeout
-        const baseDelay = process.env.VERCEL === '1' ? 500 : 1000;
-        const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), process.env.VERCEL === '1' ? 2000 : 5000);
-        console.log(`⏳ Waiting ${delay}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-
-      console.log(`🎯 Synthesis attempt ${attempt + 1}/${actualMaxRetries + 1} starting...`);
-      const result = await synthesizeElevenLabs(ssmlContent, jitteredOptions);
-      console.log(`✅ Synthesis attempt ${attempt + 1} succeeded`);
-      return result;
-
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error('Unknown error');
-      console.error(`❌ Synthesis attempt ${attempt + 1} failed:`, lastError.message);
-      
-      // Don't retry on authentication errors
-      if (lastError.message.includes('401') || lastError.message.includes('403')) {
-        console.error('🚫 Authentication error - not retrying');
-        throw lastError;
-      }
-      
-      // Don't retry on timeout if we're on the last attempt
-      if (attempt === actualMaxRetries && lastError.message.includes('timeout')) {
-        console.error('⏰ Final timeout - enabling bypass mode would help here');
-      }
-      
-      if (attempt === actualMaxRetries) {
-        break; // Don't continue if this was the last attempt
-      }
+  // Undici agent handles retries automatically, so we just need simple error handling
+  try {
+    return await synthesizeElevenLabs(ssmlContent, options);
+  } catch (error) {
+    console.error('❌ Synthesis failed:', error);
+    
+    // Don't retry on authentication errors
+    if (error instanceof Error && (error.message.includes('401') || error.message.includes('403'))) {
+      console.error('🚫 Authentication error - check API key and voice ID');
+      throw error;
     }
+    
+    throw error;
   }
-
-  console.error(`💥 All ${actualMaxRetries + 1} synthesis attempts failed`);
-  throw lastError || new Error('All synthesis attempts failed');
 }
 
-/**
- * Add small random jitter to voice settings for retry attempts
- * @param options - Original synthesis options
- * @returns Options with jittered voice settings
- */
-function addVoiceJitter(options: SynthesisOptions): SynthesisOptions {
-  const jitterAmount = 0.05; // ±5% jitter
-  
-  return {
-    ...options,
-    voiceSettings: {
-      ...options.voiceSettings,
-      stability: Math.max(0, Math.min(1, 
-        options.voiceSettings.stability + (Math.random() - 0.5) * jitterAmount
-      )),
-      style: Math.max(0, Math.min(1, 
-        options.voiceSettings.style + (Math.random() - 0.5) * jitterAmount
-      )),
-      // Keep similarityBoost and speakerBoost unchanged for consistency
-    },
-  };
-}
 
 /**
  * Validate ElevenLabs configuration
