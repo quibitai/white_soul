@@ -506,11 +506,11 @@ async function synthesizeChunks(
             voiceIdPreview: voiceId ? `${voiceId.slice(0, 8)}...` : 'MISSING'
           });
         
-        if (!bypassMode && !voiceId) {
+        if (!voiceId) {
           throw new Error('ELEVEN_VOICE_ID environment variable is not set');
         }
         
-        if (!bypassMode && !apiKey) {
+        if (!apiKey) {
           throw new Error('ELEVENLABS_API_KEY environment variable is not set');
         }
         
