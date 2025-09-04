@@ -179,7 +179,7 @@ export async function synthesizeElevenLabs(
     }
 
     // Stream response directly to buffer for memory efficiency
-    const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
+    const nodeStream = Readable.fromWeb(response.body as any);
     const chunks: Buffer[] = [];
     
     for await (const chunk of nodeStream) {
