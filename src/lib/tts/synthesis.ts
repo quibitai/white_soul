@@ -118,9 +118,9 @@ export async function synthesizeElevenLabs(
     console.log('🎤 Voice ID:', voiceId);
     console.log('🤖 Model ID:', modelId);
     
-    // Add timeout to prevent hanging - reduced to 15s for better Vercel compatibility
+    // Aggressive timeout for Vercel serverless functions
     const controller = new AbortController();
-    const timeoutMs = process.env.VERCEL === '1' ? 15000 : 25000; // Shorter timeout on Vercel
+    const timeoutMs = process.env.VERCEL === '1' ? 10000 : 25000; // Very short timeout on Vercel
     const timeoutId = setTimeout(() => {
       console.error(`⏰ ElevenLabs API request timeout (${timeoutMs}ms) - aborting request`);
       controller.abort();
@@ -215,31 +215,52 @@ export async function synthesizeWithRetry(
   maxRetries: number = 1
 ): Promise<Buffer> {
   let lastError: Error | null = null;
+  
+  // Increase retries on Vercel due to network instability
+  const actualMaxRetries = process.env.VERCEL === '1' ? Math.max(maxRetries, 2) : maxRetries;
+  console.log(`🔄 Starting synthesis with ${actualMaxRetries} max retries (Vercel: ${process.env.VERCEL === '1'})`);
 
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+  for (let attempt = 0; attempt <= actualMaxRetries; attempt++) {
     try {
       // Add jitter to voice settings on retry
       const jitteredOptions = attempt > 0 ? addVoiceJitter(options) : options;
       
       if (attempt > 0) {
-        console.log(`🔄 Retry attempt ${attempt}/${maxRetries} with jitter`);
-        // Add delay with exponential backoff
-        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
+        console.log(`🔄 Retry attempt ${attempt}/${actualMaxRetries} with jitter`);
+        // Shorter delays on Vercel to stay within function timeout
+        const baseDelay = process.env.VERCEL === '1' ? 500 : 1000;
+        const delay = Math.min(baseDelay * Math.pow(2, attempt - 1), process.env.VERCEL === '1' ? 2000 : 5000);
+        console.log(`⏳ Waiting ${delay}ms before retry...`);
         await new Promise(resolve => setTimeout(resolve, delay));
       }
 
-      return await synthesizeElevenLabs(ssmlContent, jitteredOptions);
+      console.log(`🎯 Synthesis attempt ${attempt + 1}/${actualMaxRetries + 1} starting...`);
+      const result = await synthesizeElevenLabs(ssmlContent, jitteredOptions);
+      console.log(`✅ Synthesis attempt ${attempt + 1} succeeded`);
+      return result;
 
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
-      console.warn(`⚠️ Synthesis attempt ${attempt + 1} failed:`, lastError.message);
+      console.error(`❌ Synthesis attempt ${attempt + 1} failed:`, lastError.message);
       
-      if (attempt === maxRetries) {
+      // Don't retry on authentication errors
+      if (lastError.message.includes('401') || lastError.message.includes('403')) {
+        console.error('🚫 Authentication error - not retrying');
+        throw lastError;
+      }
+      
+      // Don't retry on timeout if we're on the last attempt
+      if (attempt === actualMaxRetries && lastError.message.includes('timeout')) {
+        console.error('⏰ Final timeout - enabling bypass mode would help here');
+      }
+      
+      if (attempt === actualMaxRetries) {
         break; // Don't continue if this was the last attempt
       }
     }
   }
 
+  console.error(`💥 All ${actualMaxRetries + 1} synthesis attempts failed`);
   throw lastError || new Error('All synthesis attempts failed');
 }
 
