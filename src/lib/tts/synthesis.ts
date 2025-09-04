@@ -179,6 +179,7 @@ export async function synthesizeElevenLabs(
     }
 
     // Stream response directly to buffer for memory efficiency
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const nodeStream = Readable.fromWeb(response.body as any);
     const chunks: Buffer[] = [];
     
