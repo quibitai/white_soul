@@ -126,6 +126,7 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     
     // Step 1: Synthesize chunks
     console.log(`🎙️ Starting synthesis of ${finalManifest.chunks.length} chunks...`);
+    const synthesisStartTime = Date.now();
     
     let chunkBuffers: Buffer[];
     try {
