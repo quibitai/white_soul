@@ -115,6 +115,7 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
     }
     
     // Update status to running
+    console.log('📊 About to update status to running...');
     await updateStatus(renderId, {
       state: 'running',
       steps: [
@@ -123,9 +124,12 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
         { name: 'synthesize', ok: false, done: 0, total: finalManifest.chunks.length },
       ],
     });
+    console.log('✅ Status updated to running successfully');
     
     // Step 1: Synthesize chunks
     console.log(`🎙️ Starting synthesis of ${finalManifest.chunks.length} chunks...`);
+    console.log(`📋 Manifest chunks: ${JSON.stringify(finalManifest.chunks.map(c => ({ ix: c.ix, hash: c.hash.slice(0, 8), ssmlLength: c.ssml.length })))}`);
+    console.log(`🔧 Settings: ${JSON.stringify(finalSettings.eleven)}`);
     const synthesisStartTime = Date.now();
     
     let chunkBuffers: Buffer[];
@@ -386,11 +390,13 @@ async function synthesizeChunks(
   settings: TuningSettings,
   renderId: string
 ): Promise<Buffer[]> {
-  console.log(`🎙️ Synthesizing ${manifest.chunks.length} chunks with concurrency control`);
+  console.log(`🎙️ ENTERED synthesizeChunks function - ${manifest.chunks.length} chunks with concurrency control`);
+  console.log(`🔍 Function parameters: renderId=${renderId}, chunks=${manifest.chunks.length}, settings=${JSON.stringify(settings.eleven)}`);
   
   // Limit concurrent ElevenLabs API calls to prevent rate limiting
   const limit = pLimit(3); // Maximum 3 concurrent requests
   console.log('🚦 Using p-limit with concurrency of 3 for ElevenLabs API calls');
+  console.log('📦 About to create chunk promises...');
   
   // Create promises for all chunks with concurrency control
   const chunkPromises = manifest.chunks.map((chunk, i) => 
