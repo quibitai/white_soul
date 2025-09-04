@@ -41,25 +41,8 @@ async function initializeFFmpeg(): Promise<boolean> {
     console.log('⚠️ ffmpeg-static not available:', error instanceof Error ? error.message : 'Unknown error');
   }
   
-  // Tier 3: Try @ffmpeg-installer/ffmpeg (Vercel-specific, may have import issues)
-  try {
-    // Only try this in production/Vercel environment
-    if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-      const ffmpegInstaller = await import('@ffmpeg-installer/ffmpeg');
-      if (ffmpegInstaller.path) {
-        await fs.access(ffmpegInstaller.path);
-        ffmpeg.setFfmpegPath(ffmpegInstaller.path);
-        ffmpegPath = ffmpegInstaller.path;
-        ffmpegAvailable = true;
-        console.log('✅ FFmpeg initialized with @ffmpeg-installer/ffmpeg:', ffmpegPath);
-        return true;
-      }
-    } else {
-      console.log('⚠️ Skipping @ffmpeg-installer/ffmpeg in development (Next.js compatibility issues)');
-    }
-  } catch (error) {
-    console.log('⚠️ @ffmpeg-installer/ffmpeg not available:', error instanceof Error ? error.message : 'Unknown error');
-  }
+  // Note: For Vercel deployment, we'll rely on ffmpeg-static or system FFmpeg
+  // @ffmpeg-installer/ffmpeg has Next.js compatibility issues
   
   console.log('❌ No FFmpeg available - will use fallback implementations');
   return false;
@@ -224,6 +207,7 @@ export async function masterAndEncode(
       
       // Write input file
       await fs.writeFile(inputPath, inputBuffer);
+      console.log(`📁 Input file written: ${inputPath} (${inputBuffer.length} bytes)`);
       
       // Build audio filters
       const filters: string[] = [];
@@ -254,8 +238,18 @@ export async function masterAndEncode(
       await new Promise<void>((resolve, reject) => {
         const command = ffmpeg(inputPath);
         
+        console.log(`🔧 FFmpeg command setup:`, {
+          inputPath,
+          outputPath,
+          filtersCount: filters.length,
+          filters: filters,
+          format: options.format,
+          bitrate: options.bitrateKbps
+        });
+        
         if (filters.length > 0) {
           command.audioFilters(filters);
+          console.log(`🎛️ Applied ${filters.length} audio filters:`, filters);
         }
         
         // Output format
@@ -264,19 +258,34 @@ export async function masterAndEncode(
           if (options.bitrateKbps) {
             command.audioBitrate(options.bitrateKbps);
           }
+          console.log(`🎵 MP3 encoding: codec=libmp3lame, bitrate=${options.bitrateKbps}k`);
         } else if (options.format === 'aac') {
           command.audioCodec('aac');
           if (options.bitrateKbps) {
             command.audioBitrate(options.bitrateKbps);
           }
+          console.log(`🎵 AAC encoding: codec=aac, bitrate=${options.bitrateKbps}k`);
         } else {
           command.audioCodec('pcm_s16le');
+          console.log(`🎵 WAV encoding: codec=pcm_s16le`);
         }
         
         command
           .output(outputPath)
-          .on('end', () => resolve())
-          .on('error', (err) => reject(err))
+          .on('start', (commandLine) => {
+            console.log(`🚀 FFmpeg command started: ${commandLine}`);
+          })
+          .on('progress', (progress) => {
+            console.log(`⏳ FFmpeg progress: ${progress.percent}% done, time: ${progress.timemark}`);
+          })
+          .on('end', () => {
+            console.log(`✅ FFmpeg mastering command completed successfully`);
+            resolve();
+          })
+          .on('error', (err) => {
+            console.error(`💥 FFmpeg mastering command failed:`, err);
+            reject(err);
+          })
           .run();
       });
       
