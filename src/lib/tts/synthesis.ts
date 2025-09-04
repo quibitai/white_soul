@@ -166,7 +166,7 @@ export async function synthesizeElevenLabs(
     }
 
     // Stream response directly to buffer for memory efficiency
-    const nodeStream = Readable.fromWeb(response.body as any);
+    const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
     const chunks: Buffer[] = [];
     
     for await (const chunk of nodeStream) {
@@ -208,13 +208,11 @@ export async function synthesizeElevenLabs(
  * Synthesize with automatic retry and jitter
  * @param ssmlContent - SSML content to synthesize
  * @param options - Synthesis options
- * @param maxRetries - Maximum number of retries (default: 1)
  * @returns Audio buffer
  */
 export async function synthesizeWithRetry(
   ssmlContent: string,
-  options: SynthesisOptions,
-  maxRetries: number = 2
+  options: SynthesisOptions
 ): Promise<Buffer> {
   console.log(`🔄 Starting synthesis with undici built-in retry logic`);
   

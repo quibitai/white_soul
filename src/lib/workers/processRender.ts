@@ -20,7 +20,7 @@ import {
 } from '@/lib/utils/hash';
 import { synthesizeWithRetry } from '@/lib/tts/synthesis';
 import { acrossfadeJoin, masterAndEncode, analyzeAudio } from '@/lib/audio/ffmpeg-hybrid';
-import { getBlobRetryConfig, logEnvironmentInfo } from '@/lib/config/vercel';
+import { getBlobRetryConfig } from '@/lib/config/vercel';
 import { cacheMonitor, logCachePerformance } from '@/lib/utils/cache-monitor';
 
 /**
