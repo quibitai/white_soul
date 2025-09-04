@@ -26,7 +26,6 @@ export const elevenLabsAgent = new Agent({
   
   // Connection behavior
   pipelining: 1,                // Disable pipelining for stability
-  maxHeaderPairs: 100,          // Reasonable header limit
 });
 
 /**
