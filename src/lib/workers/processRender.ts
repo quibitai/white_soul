@@ -584,16 +584,24 @@ async function updateStatus(renderId: string, updates: Partial<RenderStatus>): P
       updatedAt: new Date().toISOString(),
     };
     
+    console.log(`📝 About to save status: ${JSON.stringify(updatedStatus, null, 2).slice(0, 200)}...`);
+    
     // Save updated status
+    const statusPath = generateRenderPath(renderId, 'status.json');
+    console.log(`💾 Saving to path: ${statusPath}`);
+    
     await put(
-      generateRenderPath(renderId, 'status.json'),
+      statusPath,
       JSON.stringify(updatedStatus, null, 2),
       { access: 'public', addRandomSuffix: false, allowOverwrite: true }
     );
     
     console.log(`✅ Status updated for render ${renderId}: ${updatedStatus.state}`);
   } catch (error) {
-    console.error(`Failed to update status for render ${renderId}:`, error);
+    console.error(`❌ CRITICAL: Failed to update status for render ${renderId}:`, error);
+    console.error(`❌ Error details:`, error instanceof Error ? error.message : 'Unknown error');
+    console.error(`❌ Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
+    throw error; // Re-throw to see the actual error
   }
 }
 
