@@ -17,7 +17,7 @@ import {
   generateBlobUrl,
 } from '@/lib/utils/hash';
 import { synthesizeWithRetry } from '@/lib/tts/synthesis';
-import { acrossfadeJoin, masterAndEncode, analyzeAudio } from '@/lib/audio/ffmpeg-wasm';
+import { acrossfadeJoin, masterAndEncode, analyzeAudio } from '@/lib/audio/ffmpeg-hybrid';
 import { getBlobRetryConfig, logEnvironmentInfo } from '@/lib/config/vercel';
 import { cacheMonitor, logCachePerformance } from '@/lib/utils/cache-monitor';
 
@@ -107,8 +107,8 @@ export async function processRender(renderId: string, manifest?: Manifest, setti
   const startTime = new Date();
   
   try {
-    // Using WebAssembly FFmpeg - no binary check needed
-    console.log('🔧 Using WebAssembly FFmpeg implementation for serverless compatibility');
+    // Using hybrid FFmpeg implementation with graceful fallbacks
+    console.log('🔧 Using hybrid FFmpeg implementation with graceful fallbacks');
     
     // If manifest and settings are provided, use them directly to avoid blob read issues
     let finalManifest: Manifest;
@@ -418,13 +418,16 @@ async function synthesizeChunks(
   
   for (let i = 0; i < manifest.chunks.length; i++) {
     const chunk = manifest.chunks[i];
-    console.log(`🎙️ Processing chunk ${i + 1}/${manifest.chunks.length} (${chunk.hash.slice(0, 8)}...)`);
-    console.log(`📝 Chunk details:`, {
-      index: i,
-      textLength: chunk.text.length,
-      ssmlLength: chunk.ssml.length,
-      hash: chunk.hash.slice(0, 12)
-    });
+            console.log(`🎙️ Processing chunk ${i + 1}/${manifest.chunks.length} (${chunk.hash.slice(0, 8)}...)`);
+        console.log(`📝 Chunk details:`, {
+          index: i,
+          textLength: chunk.text.length,
+          ssmlLength: chunk.ssml.length,
+          hash: chunk.hash.slice(0, 12)
+        });
+        console.log(`📝 Chunk text preview: "${chunk.text.slice(0, 100)}${chunk.text.length > 100 ? '...' : ''}"`);
+        console.log(`📝 Chunk SSML preview: "${chunk.ssml.slice(0, 150)}${chunk.ssml.length > 150 ? '...' : ''}"`);
+        
     
     // Update status to show current chunk progress
     await updateStatus(renderId, {
@@ -458,6 +461,17 @@ async function synthesizeChunks(
         if (contentResponse.ok) {
           audioBuffer = Buffer.from(await contentResponse.arrayBuffer());
           console.log(`💾 Cache hit for chunk ${i}`);
+          console.log(`📊 Cached audio details:`, {
+            bufferSize: audioBuffer.length,
+            bufferType: audioBuffer.constructor.name,
+            firstBytes: Array.from(audioBuffer.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+          });
+          
+          // Validate the cached audio is not empty or corrupted
+          if (audioBuffer.length < 1000) {
+            console.log(`⚠️ Cached audio suspiciously small (${audioBuffer.length} bytes), may be corrupted`);
+          }
+          
           cacheMonitor.recordHit('chunks');
         }
       }
@@ -473,19 +487,24 @@ async function synthesizeChunks(
         console.log(`🎯 Starting synthesis for chunk ${i + 1}/${manifest.chunks.length}`);
         console.log(`📝 SSML preview: ${chunk.ssml.slice(0, 200)}${chunk.ssml.length > 200 ? '...' : ''}`);
         
-        // Check environment variables
-        const voiceId = process.env.ELEVEN_VOICE_ID;
-        const modelId = process.env.ELEVEN_MODEL_ID || 'eleven_multilingual_v2';
-        const apiKey = process.env.ELEVENLABS_API_KEY;
-        const bypassMode = process.env.BYPASS_ELEVENLABS === 'true';
-        
-        console.log('🔧 Environment check:', {
-          hasVoiceId: !!voiceId,
-          hasApiKey: !!apiKey,
-          modelId,
-          bypassMode,
-          voiceIdPreview: voiceId ? `${voiceId.slice(0, 8)}...` : 'MISSING'
-        });
+        // Check for emergency bypass mode
+        if (process.env.BYPASS_ELEVENLABS === 'true') {
+          console.log('🚨 BYPASS MODE: Skipping ElevenLabs synthesis, using dummy audio');
+          // Create a dummy audio buffer (1 second of silence at 44.1kHz, 16-bit, mono)
+          audioBuffer = Buffer.alloc(44100 * 2); // 2 bytes per sample for 16-bit
+          console.log(`🔇 Generated dummy audio buffer: ${audioBuffer.length} bytes`);
+        } else {
+          // Check environment variables
+          const voiceId = process.env.ELEVEN_VOICE_ID;
+          const modelId = process.env.ELEVEN_MODEL_ID || 'eleven_multilingual_v2';
+          const apiKey = process.env.ELEVENLABS_API_KEY;
+          
+          console.log('🔧 Environment check:', {
+            hasVoiceId: !!voiceId,
+            hasApiKey: !!apiKey,
+            modelId,
+            voiceIdPreview: voiceId ? `${voiceId.slice(0, 8)}...` : 'MISSING'
+          });
         
         if (!bypassMode && !voiceId) {
           throw new Error('ELEVEN_VOICE_ID environment variable is not set');
@@ -500,21 +519,22 @@ async function synthesizeChunks(
         console.log(`🎯 Chunk text preview: ${chunk.text.slice(0, 100)}...`);
         const startTime = Date.now();
         
-        audioBuffer = await synthesizeWithRetry(chunk.ssml, {
-          voiceId: voiceId || 'dummy',
-          modelId,
-          voiceSettings: settings.eleven,
-          format: 'pcm', // Use PCM format for ElevenLabs compatibility
-          seed: 12345, // Deterministic seed
-          previousText: chunk.ix > 0 ? manifest.chunks[chunk.ix - 1].text.slice(-300) : undefined,
-          nextText: chunk.ix < manifest.chunks.length - 1 ? manifest.chunks[chunk.ix + 1].text.slice(0, 300) : undefined,
-        });
-        
-        const duration = Date.now() - startTime;
-        console.log(`⏱️ Synthesis took ${duration}ms for chunk ${i + 1}/${manifest.chunks.length}`);
-        
-        console.log(`✅ Synthesis completed for chunk ${i + 1}, buffer size: ${audioBuffer.length} bytes`);
-        console.log(`🎵 Audio buffer type: ${audioBuffer.constructor.name}`);
+          audioBuffer = await synthesizeWithRetry(chunk.ssml, {
+            voiceId: voiceId || 'dummy',
+            modelId,
+            voiceSettings: settings.eleven,
+            format: 'pcm', // Use PCM format for ElevenLabs compatibility
+            seed: 12345, // Deterministic seed
+            previousText: chunk.ix > 0 ? manifest.chunks[chunk.ix - 1].text.slice(-300) : undefined,
+            nextText: chunk.ix < manifest.chunks.length - 1 ? manifest.chunks[chunk.ix + 1].text.slice(0, 300) : undefined,
+          });
+          
+          const duration = Date.now() - startTime;
+          console.log(`⏱️ Synthesis took ${duration}ms for chunk ${i + 1}/${manifest.chunks.length}`);
+          
+          console.log(`✅ Synthesis completed for chunk ${i + 1}, buffer size: ${audioBuffer.length} bytes`);
+          console.log(`🎵 Audio buffer type: ${audioBuffer.constructor.name}`);
+        } // End of bypass mode else block
         
         // Cache the result with retry on failure
         try {
@@ -541,6 +561,11 @@ async function synthesizeChunks(
       // Don't fail the process, but log the warning
     }
     
+    console.log(`✅ Adding chunk ${i} to buffer array:`, {
+      chunkIndex: i,
+      bufferSize: audioBuffer.length,
+      totalChunksProcessed: chunkBuffers.length + 1
+    });
     chunkBuffers.push(audioBuffer);
     
     // Update progress with error handling

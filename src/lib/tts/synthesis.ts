@@ -118,28 +118,40 @@ export async function synthesizeElevenLabs(
     console.log('🎤 Voice ID:', voiceId);
     console.log('🤖 Model ID:', modelId);
     
-    // Add timeout to prevent hanging - increased to 25s for Vercel's 30s limit
+    // Add timeout to prevent hanging - reduced to 15s for better Vercel compatibility
     const controller = new AbortController();
+    const timeoutMs = process.env.VERCEL === '1' ? 15000 : 25000; // Shorter timeout on Vercel
     const timeoutId = setTimeout(() => {
-      console.error('⏰ ElevenLabs API request timeout (25s) - aborting request');
+      console.error(`⏰ ElevenLabs API request timeout (${timeoutMs}ms) - aborting request`);
       controller.abort();
-    }, 25000); // 25 second timeout to stay within Vercel's 30s limit
+    }, timeoutMs);
     
     console.log('📤 Sending request to:', url);
     console.log('📦 Request body size:', JSON.stringify(requestBody).length, 'bytes');
+    console.log(`⏰ Timeout set to ${timeoutMs}ms`);
     
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'xi-api-key': process.env.ELEVENLABS_API_KEY,
-        'Content-Type': 'application/json',
-        'Accept': format === 'wav' ? 'audio/wav' : 'audio/mpeg',
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    });
-    
-    console.log('📨 Fetch completed, processing response...');
+    let response: Response;
+    try {
+      console.log('🚀 Starting fetch request...');
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'xi-api-key': process.env.ELEVENLABS_API_KEY,
+          'Content-Type': 'application/json',
+          'Accept': format === 'wav' ? 'audio/wav' : 'audio/mpeg',
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      });
+      console.log('📨 Fetch completed, processing response...');
+    } catch (fetchError) {
+      clearTimeout(timeoutId);
+      console.error('💥 Fetch request failed:', fetchError);
+      if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+        throw new Error(`ElevenLabs API request timed out after ${timeoutMs}ms`);
+      }
+      throw fetchError;
+    }
     
     clearTimeout(timeoutId);
     console.log(`📡 ElevenLabs API response: ${response.status} ${response.statusText}`);
