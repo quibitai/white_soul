@@ -56,7 +56,7 @@ export function logNetworkConfig(): void {
     environment: isVercel ? 'Vercel' : 'Local',
     nodeOptions,
     agentConfig: {
-      connections: elevenLabsAgent.connections,
+      maxConnections: '100',
       keepAliveTimeout: '30s',
       headersTimeout: '120s',
       bodyTimeout: 'disabled (using AbortSignal)'
