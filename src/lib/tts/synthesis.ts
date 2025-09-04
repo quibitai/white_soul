@@ -150,9 +150,21 @@ export async function synthesizeElevenLabs(
     if (!response.ok) {
       let errorMessage = `HTTP ${response.status}`;
       try {
-        const errorData = await response.json();
+        const errorData = await response.json() as unknown;
         console.error('❌ ElevenLabs API error details:', errorData);
-        errorMessage = errorData.detail?.message || errorData.message || errorMessage;
+        
+        // Safely extract error message from unknown response
+        if (typeof errorData === 'object' && errorData !== null) {
+          const data = errorData as Record<string, unknown>;
+          const detailMessage = typeof data.detail === 'object' && data.detail !== null 
+            ? (data.detail as Record<string, unknown>).message 
+            : undefined;
+          const directMessage = data.message;
+          
+          errorMessage = (typeof detailMessage === 'string' ? detailMessage : 
+                        typeof directMessage === 'string' ? directMessage : 
+                        errorMessage);
+        }
       } catch {
         errorMessage = await response.text() || errorMessage;
         console.error('❌ Could not parse error response from ElevenLabs API');
