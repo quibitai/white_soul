@@ -27,11 +27,13 @@ async function initializeFFmpeg(): Promise<boolean> {
   // Tier 1: ffmpeg-static (most reliable for serverless)
   try {
     const ffmpegStatic = await import('ffmpeg-static');
-    if (ffmpegStatic.default) {
+    const ffmpegBinaryPath = ffmpegStatic.default;
+    
+    if (ffmpegBinaryPath && typeof ffmpegBinaryPath === 'string') {
       // Verify the binary exists and is accessible
-      await fs.access(ffmpegStatic.default);
-      ffmpeg.setFfmpegPath(ffmpegStatic.default);
-      ffmpegPath = ffmpegStatic.default;
+      await fs.access(ffmpegBinaryPath);
+      ffmpeg.setFfmpegPath(ffmpegBinaryPath);
+      ffmpegPath = ffmpegBinaryPath;
       ffmpegAvailable = true;
       console.log('✅ FFmpeg initialized with ffmpeg-static:', ffmpegPath);
       return true;
