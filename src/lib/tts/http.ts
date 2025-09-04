@@ -40,8 +40,9 @@ export const elevenLabsFetch = fetch;
  */
 export function createElevenLabsTimeout(): AbortSignal {
   const isVercel = process.env.VERCEL === '1';
-  const timeoutMs = isVercel ? 180_000 : 300_000; // 3 minutes Vercel, 5 minutes local
+  const timeoutMs = isVercel ? 60_000 : 120_000; // 1 minute Vercel, 2 minutes local (more aggressive)
   
+  console.log(`⏰ Creating AbortSignal with ${timeoutMs}ms timeout (Vercel: ${isVercel})`);
   return AbortSignal.timeout(timeoutMs);
 }
 

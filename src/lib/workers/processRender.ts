@@ -435,15 +435,25 @@ async function synthesizeChunks(
         }
         
         const startTime = Date.now();
-        audioBuffer = await synthesizeWithRetry(chunk.ssml, {
-          voiceId,
-          modelId,
-          voiceSettings: settings.eleven,
-          format: 'pcm',
-          seed: 12345,
-          previousText: chunk.ix > 0 ? manifest.chunks[chunk.ix - 1].text.slice(-300) : undefined,
-          nextText: chunk.ix < manifest.chunks.length - 1 ? manifest.chunks[chunk.ix + 1].text.slice(0, 300) : undefined,
-        });
+        console.log(`🚀 About to call synthesizeWithRetry for chunk ${i + 1}`);
+        console.log(`📝 SSML length: ${chunk.ssml.length} characters`);
+        console.log(`🔧 Voice ID: ${voiceId}, Model: ${modelId}`);
+        
+        try {
+          audioBuffer = await synthesizeWithRetry(chunk.ssml, {
+            voiceId,
+            modelId,
+            voiceSettings: settings.eleven,
+            format: 'pcm',
+            seed: 12345,
+            previousText: chunk.ix > 0 ? manifest.chunks[chunk.ix - 1].text.slice(-300) : undefined,
+            nextText: chunk.ix < manifest.chunks.length - 1 ? manifest.chunks[chunk.ix + 1].text.slice(0, 300) : undefined,
+          });
+          console.log(`✅ synthesizeWithRetry completed for chunk ${i + 1}`);
+        } catch (synthError) {
+          console.error(`❌ synthesizeWithRetry failed for chunk ${i + 1}:`, synthError);
+          throw synthError;
+        }
         
         const duration = Date.now() - startTime;
         console.log(`⏱️ Synthesis took ${duration}ms for chunk ${i + 1}`);

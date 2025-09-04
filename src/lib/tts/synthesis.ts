@@ -126,6 +126,10 @@ export async function synthesizeElevenLabs(
     let response: Response;
     try {
       console.log('🚀 Starting undici request with custom agent...');
+      console.log('🔗 Request URL:', url);
+      console.log('🔑 Using API key:', process.env.ELEVENLABS_API_KEY ? 'SET' : 'NOT SET');
+      console.log('⏰ Timeout signal created, starting fetch...');
+      
       response = await elevenLabsFetch(url, {
         method: 'POST',
         headers: {
