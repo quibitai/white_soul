@@ -2,6 +2,164 @@
 
 A sophisticated text-to-speech application that transforms tarot scripts into natural, engaging audio using ElevenLabs TTS with Angela voice styling. Built with Next.js, TypeScript, and Vercel.
 
+## 🎯 What This App Does
+
+White Soul Tarot is an AI-powered tool that takes your tarot reading scripts and converts them into natural-sounding audio using advanced voice synthesis. It's designed specifically for tarot readers who want to create high-quality audio content with a consistent, professional voice.
+
+### How It Works
+
+1. **📝 Input Your Script**: Paste your tarot reading text into the app
+2. **🎭 Style Processing**: The app applies Angela's conversational style and emotional delivery
+3. **🎙️ Voice Generation**: ElevenLabs AI creates natural-sounding audio from your script
+4. **📱 Download & Use**: Get your audio file ready for podcasts, videos, or any content
+
+## 🚀 Getting Started on Mac
+
+### Step 1: Install Prerequisites
+
+#### Install Node.js (Required)
+1. **Download Node.js**: Go to [nodejs.org](https://nodejs.org/)
+2. **Choose the LTS version** (recommended for most users)
+3. **Download the macOS installer** (.pkg file)
+4. **Run the installer** and follow the setup wizard
+5. **Verify installation**: Open Terminal and run:
+   ```bash
+   node --version
+   npm --version
+   ```
+   You should see version numbers (Node.js 18+ recommended)
+
+#### Install Git (if not already installed)
+1. **Check if Git is installed**:
+   ```bash
+   git --version
+   ```
+2. **If not installed**, download from [git-scm.com](https://git-scm.com/download/mac)
+3. **Or install via Homebrew** (if you have it):
+   ```bash
+   brew install git
+   ```
+
+### Step 2: Clone the Repository
+
+1. **Open Terminal** (Press `Cmd + Space`, type "Terminal", press Enter)
+
+2. **Navigate to your desired folder** (e.g., Documents):
+   ```bash
+   cd ~/Documents
+   ```
+
+3. **Clone the repository**:
+   ```bash
+   git clone https://github.com/quibitai/white_soul.git
+   ```
+
+4. **Navigate into the project folder**:
+   ```bash
+   cd white_soul/white-soul-tarot
+   ```
+
+### Step 3: Install Dependencies
+
+1. **Install all required packages**:
+   ```bash
+   npm install
+   ```
+   This may take a few minutes as it downloads all the necessary libraries.
+
+2. **Wait for completion** - you'll see a success message when done.
+
+### Step 4: Set Up Environment Variables
+
+1. **Create environment file**:
+   ```bash
+   cp .env.example .env.local
+   ```
+   *(If .env.example doesn't exist, create .env.local manually)*
+
+2. **Edit the environment file**:
+   ```bash
+   open .env.local
+   ```
+   This opens the file in TextEdit.
+
+3. **Add your ElevenLabs API key**:
+   ```env
+   ELEVENLABS_API_KEY=your_actual_api_key_here
+   ELEVEN_VOICE_ID=your_voice_id_here
+   ELEVEN_MODEL_ID=eleven_multilingual_v2
+   NEXT_PUBLIC_APP_NAME="White Soul Tarot - Script to Styled Voice"
+   AUDIO_RETENTION_DAYS=14
+   MAX_INPUT_CHARS=20000
+   ```
+
+4. **Save the file** (Cmd + S)
+
+### Step 5: Run the Development Server
+
+1. **Start the development server**:
+   ```bash
+   npm run dev
+   ```
+
+2. **Wait for the server to start** - you'll see:
+   ```
+   ▲ Next.js 15.5.0
+   - Local:        http://localhost:3000
+   - ready in 2.3s
+   ```
+
+3. **Open your browser** and go to: `http://localhost:3000`
+
+4. **You should see the White Soul Tarot application!** 🎉
+
+### Step 6: Test the Application
+
+1. **Paste some sample text** into the text area
+2. **Click "Generate Annotated Script"** to process your text
+3. **Click "Generate Angela's Voice"** to create audio
+4. **Download and play** your generated audio file
+
+## 🛠️ Troubleshooting
+
+### Common Issues on Mac
+
+#### "Command not found: node" or "Command not found: npm"
+- **Solution**: Node.js isn't installed or not in your PATH
+- **Fix**: Reinstall Node.js from [nodejs.org](https://nodejs.org/) and restart Terminal
+
+#### "Permission denied" errors
+- **Solution**: Add `sudo` before commands that need admin access
+- **Example**: `sudo npm install -g some-package`
+
+#### "Port 3000 is already in use"
+- **Solution**: Kill the process using that port
+- **Fix**: 
+  ```bash
+  lsof -ti:3000 | xargs kill -9
+  ```
+  Then try `npm run dev` again
+
+#### "Module not found" errors
+- **Solution**: Dependencies aren't installed properly
+- **Fix**: 
+  ```bash
+  rm -rf node_modules package-lock.json
+  npm install
+  ```
+
+#### ElevenLabs API errors
+- **Check**: Your API key is correct in `.env.local`
+- **Check**: You have sufficient credits in your ElevenLabs account
+- **Check**: Your voice ID is valid
+
+### Getting Help
+
+1. **Check the terminal output** for specific error messages
+2. **Restart the development server** (`Ctrl + C` to stop, then `npm run dev`)
+3. **Clear browser cache** and refresh the page
+4. **Check your internet connection** (required for ElevenLabs API)
+
 ## 🎯 Application Overview
 
 White Soul Tarot is an AI-native engine for mapping resonance, emotional rhythm, and symbolic logic. It reconstructs tarot readings from pattern and powers them through intuition, using a unified ElevenLabs V2 SSML pipeline optimized for cloned voice compatibility and emotional delivery.
@@ -210,31 +368,97 @@ The V2 pipeline uses SSML tags for nuanced emotional expression:
 - **Chunking**: 35-second target chunks with sentence boundaries
 - **Emphasis**: Controlled ALL CAPS and SSML emphasis tags
 
-## 🚀 Quick Start
+## 🔄 Development Workflow
 
-### Prerequisites
+### Two-Step Generation Process
 
-- Node.js 18+ 
-- ElevenLabs API account with V2 access
-- Vercel account (for deployment)
+1. **Generate Annotated Script**: Process raw text through Angela V2 pipeline
+2. **Generate Angela's Voice**: Synthesize annotated script into audio
 
-### Installation & Development
+### Code Style Guidelines
+
+- **TypeScript First**: All code must be strongly typed
+- **JSDoc Required**: Document all functions, classes, and components
+- **Error Handling**: Comprehensive try/catch for async operations
+- **Modular Design**: Keep files under 200 lines when possible
+
+### Testing
 
 ```bash
-# Install dependencies
-npm install
+# Run linting
+npm run lint
 
-# Start development server
-npm run dev
+# Type checking
+npx tsc --noEmit
+```
 
-# Build for production
+## 🎨 UI/UX Features
+
+### Main Interface
+- **Text Input**: Large textarea with file upload support
+- **Processing Status**: Real-time feedback with progress indicators
+- **Lint Reports**: Style warnings and banned phrase detection
+- **Script Editing**: Inline SSML tag editing with copy functionality
+- **Audio Playback**: Integrated player with download options
+
+### Advanced Features
+- **SSML Tag Library**: Click-to-copy SSML tags for emotional delivery
+- **Voice Versions**: Track multiple voice generations with timestamps
+- **Processing Pipeline**: Visual representation of text transformation steps
+
+## 🚀 Deployment
+
+### Vercel (Recommended)
+
+1. Connect your GitHub repository to Vercel
+2. Set environment variables in Vercel dashboard
+3. Deploy automatically on push to main branch
+
+### Manual Deployment
+
+```bash
+# Build the application
 npm run build
 
 # Start production server
 npm start
 ```
 
-Visit `http://localhost:3000` to access the application.
+## 📊 Performance Characteristics
+
+### Text Processing
+- **Input Limit**: 20,000 characters maximum
+- **Processing Speed**: ~2-5 seconds for typical scripts
+- **Chunk Optimization**: 35-second chunks for seamless audio flow
+
+### Audio Synthesis
+- **Model**: ElevenLabs V2 Multilingual for cloned voice compatibility
+- **Quality**: Enhanced quality with optimized voice settings
+- **Format**: MP3 44.1kHz 128kbps (configurable)
+- **Consistency**: Request stitching for voice continuity across chunks
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Follow the coding guidelines
+4. Add tests for new functionality
+5. Submit a pull request
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+## 🆘 Support
+
+For issues and questions:
+- Check the [documentation](docs/)
+- Open an issue on GitHub
+- Review the API endpoint documentation at `/api/prepare` and `/api/synthesize`
+
+---
+
+Built with ❤️ for the tarot community using Next.js, ElevenLabs V2, and Vercel.
 
 ## 🔄 Development Workflow
 
